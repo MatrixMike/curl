@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -18,10 +18,12 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 
 #include "curl_setup.h"
-
+#ifndef CURL_DISABLE_FTP
 #include <curl/curl.h>
 
 #include "curl_fnmatch.h"
@@ -29,6 +31,8 @@
 
 /* The last #include file should be: */
 #include "memdebug.h"
+
+#ifndef HAVE_FNMATCH
 
 #define CURLFNM_CHARSET_LEN (sizeof(char) * 256)
 #define CURLFNM_CHSET_SIZE (CURLFNM_CHARSET_LEN + 15)
@@ -72,11 +76,11 @@ static int parsekeyword(unsigned char **pattern, unsigned char *charset)
   parsekey_state state = CURLFNM_PKW_INIT;
 #define KEYLEN 10
   char keyword[KEYLEN] = { 0 };
-  int found = FALSE;
   int i;
   unsigned char *p = *pattern;
+  bool found = FALSE;
   for(i = 0; !found; i++) {
-    char c = *p++;
+    char c = (char)*p++;
     if(i >= KEYLEN)
       return SETCHARSET_FAIL;
     switch(state) {
@@ -157,7 +161,7 @@ static void setcharorrange(unsigned char **pp, unsigned char *charset)
   }
 }
 
-/* returns 1 (true) if pattern is OK, 0 if is bad ("p" is pattern pointer) */
+/* returns 1 (TRUE) if pattern is OK, 0 if is bad ("p" is pattern pointer) */
 static int setcharset(unsigned char **p, unsigned char *charset)
 {
   setcharset_state state = CURLFNM_SCHS_DEFAULT;
@@ -289,7 +293,7 @@ static int loop(const unsigned char *pattern, const unsigned char *string,
       p++;
       break;
     case '\0':
-      return *s? CURL_FNMATCH_NOMATCH: CURL_FNMATCH_MATCH;
+      return *s ? CURL_FNMATCH_NOMATCH : CURL_FNMATCH_MATCH;
     case '\\':
       if(p[1])
         p++;
@@ -299,7 +303,7 @@ static int loop(const unsigned char *pattern, const unsigned char *string,
     case '[':
       pp = p + 1; /* Copy in case of syntax error in set. */
       if(setcharset(&pp, charset)) {
-        int found = FALSE;
+        bool found = FALSE;
         if(!*s)
           return CURL_FNMATCH_NOMATCH;
         if(charset[(unsigned int)*s])
@@ -334,9 +338,9 @@ static int loop(const unsigned char *pattern, const unsigned char *string,
         s++;
         break;
       }
+      /* Syntax error in set; mismatch! */
+      return CURL_FNMATCH_NOMATCH;
 
-      /* Syntax error in set: this must be taken as a regular character. */
-      /* FALLTHROUGH */
     default:
       if(*p++ != *s++)
         return CURL_FNMATCH_NOMATCH;
@@ -355,5 +359,32 @@ int Curl_fnmatch(void *ptr, const char *pattern, const char *string)
   if(!pattern || !string) {
     return CURL_FNMATCH_FAIL;
   }
-  return loop((unsigned char *)pattern, (unsigned char *)string, 5);
+  return loop((unsigned char *)pattern, (unsigned char *)string, 2);
 }
+#else
+#include <fnmatch.h>
+/*
+ * @unittest: 1307
+ */
+int Curl_fnmatch(void *ptr, const char *pattern, const char *string)
+{
+  (void)ptr; /* the argument is specified by the curl_fnmatch_callback
+                prototype, but not used by Curl_fnmatch() */
+  if(!pattern || !string) {
+    return CURL_FNMATCH_FAIL;
+  }
+
+  switch(fnmatch(pattern, string, 0)) {
+  case 0:
+    return CURL_FNMATCH_MATCH;
+  case FNM_NOMATCH:
+    return CURL_FNMATCH_NOMATCH;
+  default:
+    return CURL_FNMATCH_FAIL;
+  }
+  /* not reached */
+}
+
+#endif
+
+#endif /* if FTP is disabled */

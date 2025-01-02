@@ -21,11 +21,11 @@ none
 <features>
 http
 </features>
- <name>
+<name>
 attempt connect to non-existing host name
- </name>
- <command>
-non-existing-host.haxx.se.
+</name>
+<command>
+--ipv4 non-existing-host.haxx.se.
 </command>
 </client>
 

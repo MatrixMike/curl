@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -18,7 +18,13 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
+#ifndef CURL_NO_GETADDRINFO_OVERRIDE
+#define CURL_NO_GETADDRINFO_OVERRIDE
+#endif
+
 #include "server_setup.h"
 
 /* Purpose
@@ -31,23 +37,18 @@
  *
  */
 
-#ifdef HAVE_SIGNAL_H
 #include <signal.h>
-#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
 #ifdef _XOPEN_SOURCE_EXTENDED
-/* This define is "almost" required to build on HPUX 11 */
+/* This define is "almost" required to build on HP-UX 11 */
 #include <arpa/inet.h>
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
 
-#define ENABLE_CURLX_PRINTF
-/* make the curlx header define all printf() functions to use the curlx_*
-   versions instead */
 #include "curlx.h" /* from the private lib dir */
 #include "util.h"
 
@@ -65,10 +66,10 @@ int main(int argc, char *argv[])
   const char *host = NULL;
   int rc = 0;
 
-  while(argc>arg) {
+  while(argc > arg) {
     if(!strcmp("--version", argv[arg])) {
       printf("resolve IPv4%s\n",
-#ifdef ENABLE_IPV6
+#if defined(CURLRES_IPV6)
              "/IPv6"
 #else
              ""
@@ -95,19 +96,19 @@ int main(int argc, char *argv[])
     puts("Usage: resolve [option] <host>\n"
          " --version\n"
          " --ipv4"
-#ifdef ENABLE_IPV6
+#if defined(CURLRES_IPV6)
          "\n --ipv6"
 #endif
          );
     return 1;
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   win32_init();
   atexit(win32_cleanup);
 #endif
 
-#ifdef ENABLE_IPV6
+#if defined(CURLRES_IPV6)
   if(use_ipv6) {
     /* Check that the system has IPv6 enabled before checking the resolver */
     curl_socket_t s = socket(PF_INET6, SOCK_DGRAM, 0);
@@ -127,12 +128,10 @@ int main(int argc, char *argv[])
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = use_ipv6 ? PF_INET6 : PF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_CANONNAME;
-    /* Use parenthesis around functions to stop them from being replaced by
-       the macro in memdebug.h */
-    rc = (getaddrinfo)(host, "80", &hints, &ai);
+    hints.ai_flags = 0;
+    rc = getaddrinfo(host, "80", &hints, &ai);
     if(rc == 0)
-      (freeaddrinfo)(ai);
+      freeaddrinfo(ai);
   }
 #else
   if(use_ipv6) {
@@ -143,7 +142,11 @@ int main(int argc, char *argv[])
     /* gethostbyname() resolve */
     struct hostent *he;
 
+#ifdef __AMIGA__
+    he = gethostbyname((unsigned char *)host);
+#else
     he = gethostbyname(host);
+#endif
 
     rc = !he;
   }

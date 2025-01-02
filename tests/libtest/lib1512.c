@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2013 - 2017, Linus Nielsen Feltzing <linus@haxx.se>
+ * Copyright (C) Linus Nielsen Feltzing <linus@haxx.se>
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -32,9 +34,9 @@
 
 #define NUM_HANDLES 2
 
-int test(char *URL)
+CURLcode test(char *URL)
 {
-  int res = 0;
+  CURLcode res = CURLE_OK;
   CURL *curl[NUM_HANDLES] = {NULL, NULL};
   char *port = libtest_arg3;
   char *address = libtest_arg2;
@@ -49,8 +51,8 @@ int test(char *URL)
     return TEST_ERR_MAJOR_BAD;
   }
 
-  snprintf(dnsentry, sizeof(dnsentry), "server.example.curl:%s:%s",
-           port, address);
+  msnprintf(dnsentry, sizeof(dnsentry), "server.example.curl:%s:%s",
+            port, address);
   printf("%s\n", dnsentry);
   slist = curl_slist_append(slist, dnsentry);
 
@@ -59,9 +61,9 @@ int test(char *URL)
     /* get an easy handle */
     easy_init(curl[i]);
     /* specify target */
-    snprintf(target_url, sizeof(target_url),
-             "http://server.example.curl:%s/path/1512%04i",
-             port, i + 1);
+    msnprintf(target_url, sizeof(target_url),
+              "http://server.example.curl:%s/path/1512%04i",
+              port, i + 1);
     target_url[sizeof(target_url) - 1] = '\0';
     easy_setopt(curl[i], CURLOPT_URL, target_url);
     /* go verbose */
@@ -69,15 +71,20 @@ int test(char *URL)
     /* include headers */
     easy_setopt(curl[i], CURLOPT_HEADER, 1L);
 
-    easy_setopt(curl[i], CURLOPT_DNS_USE_GLOBAL_CACHE, 1L);
+    CURL_IGNORE_DEPRECATION(
+      easy_setopt(curl[i], CURLOPT_DNS_USE_GLOBAL_CACHE, 1L);
+    )
   }
 
   /* make the first one populate the GLOBAL cache */
   easy_setopt(curl[0], CURLOPT_RESOLVE, slist);
 
   /* run NUM_HANDLES transfers */
-  for(i = 0; (i < NUM_HANDLES) && !res; i++)
+  for(i = 0; (i < NUM_HANDLES) && !res; i++) {
     res = curl_easy_perform(curl[i]);
+    if(res)
+      goto test_cleanup;
+  }
 
 test_cleanup:
 
@@ -88,4 +95,3 @@ test_cleanup:
 
   return res;
 }
-

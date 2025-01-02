@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -18,12 +18,14 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "test.h"
 #include "memdebug.h"
 
-static const char *HOSTHEADER = "Host: www.host.foo.com";
-static const char *JAR = "log/jar506";
+static const char * const HOSTHEADER = "Host: www.host.foo.com";
+#define JAR libtest_arg2
 #define THREADS 2
 
 /* struct containing data of a thread */
@@ -40,8 +42,8 @@ struct userdata {
 static int locks[3];
 
 /* lock callback */
-static void my_lock(CURL *handle, curl_lock_data data,
-                    curl_lock_access laccess, void *useptr)
+static void test_lock(CURL *handle, curl_lock_data data,
+                      curl_lock_access laccess, void *useptr)
 {
   const char *what;
   struct userdata *user = (struct userdata *)useptr;
@@ -80,7 +82,7 @@ static void my_lock(CURL *handle, curl_lock_data data,
 }
 
 /* unlock callback */
-static void my_unlock(CURL *handle, curl_lock_data data, void *useptr)
+static void test_unlock(CURL *handle, curl_lock_data data, void *useptr)
 {
   const char *what;
   struct userdata *user = (struct userdata *)useptr;
@@ -125,13 +127,12 @@ static struct curl_slist *sethost(struct curl_slist *headers)
 
 
 /* the dummy thread function */
-static void *fire(void *ptr)
+static void *test_fire(void *ptr)
 {
   CURLcode code;
   struct curl_slist *headers;
   struct Tdata *tdata = (struct Tdata*)ptr;
   CURL *curl;
-  int i = 0;
 
   curl = curl_easy_init();
   if(!curl) {
@@ -143,12 +144,14 @@ static void *fire(void *ptr)
   curl_easy_setopt(curl, CURLOPT_VERBOSE,    1L);
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_URL,        tdata->url);
+  curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
   printf("CURLOPT_SHARE\n");
   curl_easy_setopt(curl, CURLOPT_SHARE, tdata->share);
 
   printf("PERFORM\n");
   code = curl_easy_perform(curl);
   if(code) {
+    int i = 0;
     fprintf(stderr, "perform url '%s' repeat %d failed, curlcode %d\n",
             tdata->url, i, (int)code);
   }
@@ -169,9 +172,9 @@ static char *suburl(const char *base, int i)
 
 
 /* test function */
-int test(char *URL)
+CURLcode test(char *URL)
 {
-  int res;
+  CURLcode res;
   CURLSHcode scode = CURLSHE_OK;
   CURLcode code = CURLE_OK;
   char *url = NULL;
@@ -204,11 +207,11 @@ int test(char *URL)
 
   if(CURLSHE_OK == scode) {
     printf("CURLSHOPT_LOCKFUNC\n");
-    scode = curl_share_setopt(share, CURLSHOPT_LOCKFUNC, my_lock);
+    scode = curl_share_setopt(share, CURLSHOPT_LOCKFUNC, test_lock);
   }
   if(CURLSHE_OK == scode) {
     printf("CURLSHOPT_UNLOCKFUNC\n");
-    scode = curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, my_unlock);
+    scode = curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, test_unlock);
   }
   if(CURLSHE_OK == scode) {
     printf("CURLSHOPT_USERDATA\n");
@@ -258,7 +261,7 @@ int test(char *URL)
   curl_easy_cleanup(curl);
 
 
-  res = 0;
+  res = CURLE_OK;
 
   /* start treads */
   for(i = 1; i <= THREADS; i++) {
@@ -269,13 +272,13 @@ int test(char *URL)
 
     /* simulate thread, direct call of "thread" function */
     printf("*** run %d\n",i);
-    fire(&tdata);
+    test_fire(&tdata);
 
     curl_free(tdata.url);
   }
 
 
-  /* fetch a another one and save cookies */
+  /* fetch another one and save cookies */
   printf("*** run %d\n", i);
   curl = curl_easy_init();
   if(!curl) {
@@ -346,7 +349,7 @@ int test(char *URL)
   printf("-----------------\n");
   curl_slist_free_all(cookies);
 
-  /* try to free share, expect to fail because share is in use*/
+  /* try to free share, expect to fail because share is in use */
   printf("try SHARE_CLEANUP...\n");
   scode = curl_share_cleanup(share);
   if(scode == CURLSHE_OK) {
@@ -377,4 +380,3 @@ test_cleanup:
 
   return res;
 }
-

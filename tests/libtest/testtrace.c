@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -83,14 +85,11 @@ void libtest_debug_dump(const char *timebuf, const char *text, FILE *stream,
 }
 
 int libtest_debug_cb(CURL *handle, curl_infotype type,
-                     unsigned char *data, size_t size,
-                     void *userp)
+                     char *data, size_t size, void *userp)
 {
-
   struct libtest_trace_cfg *trace_cfg = userp;
   const char *text;
   struct timeval tv;
-  struct tm *now;
   char timebuf[20];
   char *timestr;
   time_t secs;
@@ -101,6 +100,7 @@ int libtest_debug_cb(CURL *handle, curl_infotype type,
   timestr = &timebuf[0];
 
   if(trace_cfg->tracetime) {
+    struct tm *now;
     tv = tutil_tvnow();
     if(!known_offset) {
       epoch_offset = time(NULL) - tv.tv_sec;
@@ -108,17 +108,14 @@ int libtest_debug_cb(CURL *handle, curl_infotype type,
     }
     secs = epoch_offset + tv.tv_sec;
     now = localtime(&secs);  /* not thread safe but we don't care */
-    snprintf(timebuf, sizeof(timebuf), "%02d:%02d:%02d.%06ld ",
-             now->tm_hour, now->tm_min, now->tm_sec, (long)tv.tv_usec);
+    msnprintf(timebuf, sizeof(timebuf), "%02d:%02d:%02d.%06ld ",
+              now->tm_hour, now->tm_min, now->tm_sec, (long)tv.tv_usec);
   }
 
   switch(type) {
   case CURLINFO_TEXT:
     fprintf(stderr, "%s== Info: %s", timestr, (char *)data);
-    /* FALLTHROUGH */
-  default: /* in case a new one is introduced to shock us */
     return 0;
-
   case CURLINFO_HEADER_OUT:
     text = "=> Send header";
     break;
@@ -137,9 +134,11 @@ int libtest_debug_cb(CURL *handle, curl_infotype type,
   case CURLINFO_SSL_DATA_IN:
     text = "<= Recv SSL data";
     break;
+  default: /* in case a new one is introduced to shock us */
+    return 0;
   }
 
-  libtest_debug_dump(timebuf, text, stderr, data, size, trace_cfg->nohex);
+  libtest_debug_dump(timebuf, text, stderr, (unsigned char *)data, size,
+                     trace_cfg->nohex);
   return 0;
 }
-

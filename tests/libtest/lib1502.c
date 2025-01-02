@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 /*
@@ -37,34 +39,34 @@
 
 #define TEST_HANG_TIMEOUT 60 * 1000
 
-int test(char *URL)
+CURLcode test(char *URL)
 {
   CURL *easy = NULL;
   CURL *dup;
   CURLM *multi = NULL;
   int still_running;
-  int res = 0;
+  CURLcode res = CURLE_OK;
 
   char redirect[160];
 
   /* DNS cache injection */
   struct curl_slist *dns_cache_list;
 
-  snprintf(redirect, sizeof(redirect), "google.com:%s:%s", libtest_arg2,
-           libtest_arg3);
+  res_global_init(CURL_GLOBAL_ALL);
+  if(res) {
+    return res;
+  }
+
+  msnprintf(redirect, sizeof(redirect), "google.com:%s:%s", libtest_arg2,
+            libtest_arg3);
 
   start_test_timing();
 
   dns_cache_list = curl_slist_append(NULL, redirect);
   if(!dns_cache_list) {
     fprintf(stderr, "curl_slist_append() failed\n");
+    curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
-  }
-
-  res_global_init(CURL_GLOBAL_ALL);
-  if(res) {
-    curl_slist_free_all(dns_cache_list);
-    return res;
   }
 
   easy_init(easy);
@@ -79,6 +81,9 @@ int test(char *URL)
     easy = dup;
   }
   else {
+    curl_slist_free_all(dns_cache_list);
+    curl_easy_cleanup(easy);
+    curl_global_cleanup();
     return CURLE_OUT_OF_MEMORY;
   }
 
