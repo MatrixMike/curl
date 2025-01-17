@@ -1234,8 +1234,8 @@ static bool use_http_1_1plus(const struct Curl_easy *data,
   if((data->state.httpwant == CURL_HTTP_VERSION_1_0) &&
      (conn->httpversion <= 10))
     return FALSE;
-  return ((data->state.httpwant == CURL_HTTP_VERSION_NONE) ||
-          (data->state.httpwant >= CURL_HTTP_VERSION_1_1));
+  return (data->state.httpwant == CURL_HTTP_VERSION_NONE) ||
+         (data->state.httpwant >= CURL_HTTP_VERSION_1_1);
 }
 
 static const char *get_http_string(const struct Curl_easy *data,
@@ -1685,7 +1685,7 @@ static CURLcode http_target(struct Curl_easy *data,
       data->set.str[STRING_TARGET] : url);
     free(url);
     if(result)
-      return (result);
+      return result;
 
     if(strcasecompare("ftp", data->state.up.scheme)) {
       if(data->set.proxy_transfer_mode) {
@@ -2526,7 +2526,7 @@ CURLcode Curl_http(struct Curl_easy *data, bool *done)
     goto fail;
   }
 
-  if(!(conn->handler->flags&PROTOPT_SSL) &&
+  if(!Curl_conn_is_ssl(conn, FIRSTSOCKET) &&
      conn->httpversion < 20 &&
      (data->state.httpwant == CURL_HTTP_VERSION_2)) {
     /* append HTTP2 upgrade magic stuff to the HTTP request if it is not done
@@ -2670,7 +2670,7 @@ static CURLcode http_header(struct Curl_easy *data,
   case 'A':
 #ifndef CURL_DISABLE_ALTSVC
     v = (data->asi &&
-         ((data->conn->handler->flags & PROTOPT_SSL) ||
+         (Curl_conn_is_ssl(data->conn, FIRSTSOCKET) ||
 #ifdef DEBUGBUILD
           /* allow debug builds to circumvent the HTTPS restriction */
           getenv("CURL_ALTSVC_HTTP")
@@ -2944,7 +2944,7 @@ static CURLcode http_header(struct Curl_easy *data,
 #ifndef CURL_DISABLE_HSTS
     /* If enabled, the header is incoming and this is over HTTPS */
     v = (data->hsts &&
-         ((conn->handler->flags & PROTOPT_SSL) ||
+         (Curl_conn_is_ssl(conn, FIRSTSOCKET) ||
 #ifdef DEBUGBUILD
            /* allow debug builds to circumvent the HTTPS restriction */
            getenv("CURL_HSTS_HTTP")
@@ -4121,7 +4121,9 @@ struct name_const {
   size_t namelen;
 };
 
+/* keep them sorted by length! */
 static struct name_const H2_NON_FIELD[] = {
+  { STRCONST("TE") },
   { STRCONST("Host") },
   { STRCONST("Upgrade") },
   { STRCONST("Connection") },
@@ -4166,7 +4168,7 @@ CURLcode Curl_http_req_to_h2(struct dynhds *h2_headers,
       infof(data, "set pseudo header %s to %s", HTTP_PSEUDO_SCHEME, scheme);
     }
     else {
-      scheme = (data->conn && data->conn->handler->flags & PROTOPT_SSL) ?
+      scheme = Curl_conn_is_ssl(data->conn, FIRSTSOCKET) ?
         "https" : "http";
     }
   }
@@ -4377,7 +4379,7 @@ static bool http_exp100_is_waiting(struct Curl_easy *data)
   struct Curl_creader *r = Curl_creader_get_by_type(data, &cr_exp100);
   if(r) {
     struct cr_exp100_ctx *ctx = r->ctx;
-    return (ctx->state == EXP100_AWAITING_CONTINUE);
+    return ctx->state == EXP100_AWAITING_CONTINUE;
   }
   return FALSE;
 }

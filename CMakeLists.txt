@@ -86,6 +86,23 @@ project(CURL
   VERSION "${_curl_version_sem}"
   LANGUAGES C)
 
+# CMake does not recognize some targets accurately. Touch up configuration manually as a workaround.
+if(WINDOWS_STORE AND MINGW)  # mingw UWP build
+  # CMake (as of v3.31.2) gets confused and applies the MSVC rc.exe command-line
+  # template to windres. Reset it to the windres template via 'Modules/Platform/Windows-windres.cmake':
+  set(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff <DEFINES> <INCLUDES> <FLAGS> <SOURCE> <OBJECT>")
+elseif(DOS AND CMAKE_COMPILER_IS_GNUCC)  # DJGPP
+  set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
+  set(CMAKE_STATIC_LIBRARY_SUFFIX ".a")
+  set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+endif()
+
+# Fill platform level variable when using CMake's built-in Android configuration
+if(ANDROID AND NOT DEFINED ANDROID_PLATFORM_LEVEL AND NOT CMAKE_SYSTEM_VERSION EQUAL 1)
+  set(ANDROID_PLATFORM_LEVEL "${CMAKE_SYSTEM_VERSION}")
+endif()
+
 set(_target_flags "")
 if(APPLE)
   set(_target_flags "${_target_flags} APPLE")
@@ -95,6 +112,9 @@ if(UNIX)
 endif()
 if(BSD)
   set(_target_flags "${_target_flags} BSD")
+endif()
+if(ANDROID)
+  set(_target_flags "${_target_flags} ANDROID-${ANDROID_PLATFORM_LEVEL}")
 endif()
 if(WIN32)
   set(_target_flags "${_target_flags} WIN32")
@@ -207,15 +227,18 @@ if(WIN32)
   endif()
   # Avoid storing HAVE_WIN32_WINNT in CMake cache
   unset(HAVE_WIN32_WINNT CACHE)
+
+  if(MINGW)
+    curl_internal_test(MINGW64_VERSION)
+    if(MINGW64_VERSION)
+      string(REGEX MATCH "MINGW64_VERSION=[0-9]+\.[0-9]+" CURL_TEST_OUTPUT "${CURL_TEST_OUTPUT}")
+      string(REGEX REPLACE "MINGW64_VERSION=" "" MINGW64_VERSION "${CURL_TEST_OUTPUT}")
+      message(STATUS "Found MINGW64_VERSION=${MINGW64_VERSION}")
+    endif()
+  endif()
 elseif(DOS OR AMIGA)
   set(BUILD_SHARED_LIBS OFF)
   set(BUILD_STATIC_LIBS ON)
-  if(DOS AND CMAKE_COMPILER_IS_GNUCC)
-    set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
-    set(CMAKE_STATIC_LIBRARY_SUFFIX ".a")
-    set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-  endif()
 endif()
 option(CURL_LTO "Enable compiler Link Time Optimizations" OFF)
 
@@ -298,7 +321,8 @@ else()
 endif()
 
 # Override to force-disable or force-enable the use of pkg-config.
-if(UNIX OR VCPKG_TOOLCHAIN OR (MINGW AND NOT CMAKE_CROSSCOMPILING))  # Keep in sync with CMake/curl-config.cmake.in
+# Keep condition in sync with CMake/curl-config.cmake.in
+if((UNIX AND NOT ANDROID) OR VCPKG_TOOLCHAIN OR (MINGW AND NOT CMAKE_CROSSCOMPILING))
   set(_curl_use_pkgconfig_default ON)
 else()
   set(_curl_use_pkgconfig_default OFF)
@@ -469,12 +493,11 @@ if(ENABLE_IPV6 AND NOT WIN32)
   if(APPLE AND NOT ENABLE_ARES)
     set(_use_core_foundation_and_core_services ON)
 
-    find_library(SYSTEMCONFIGURATION_FRAMEWORK "SystemConfiguration")
+    find_library(SYSTEMCONFIGURATION_FRAMEWORK NAMES "SystemConfiguration")
     mark_as_advanced(SYSTEMCONFIGURATION_FRAMEWORK)
     if(NOT SYSTEMCONFIGURATION_FRAMEWORK)
       message(FATAL_ERROR "SystemConfiguration framework not found")
     endif()
-
     list(APPEND CURL_LIBS "-framework SystemConfiguration")
   endif()
 endif()
@@ -656,15 +679,15 @@ endif()
 if(CURL_USE_SECTRANSP)
   set(_use_core_foundation_and_core_services ON)
 
-  find_library(SECURITY_FRAMEWORK "Security")
+  find_library(SECURITY_FRAMEWORK NAMES "Security")
   mark_as_advanced(SECURITY_FRAMEWORK)
   if(NOT SECURITY_FRAMEWORK)
     message(FATAL_ERROR "Security framework not found")
   endif()
+  list(APPEND CURL_LIBS "-framework Security")
 
   set(_ssl_enabled ON)
   set(USE_SECTRANSP ON)
-  list(APPEND CURL_LIBS "-framework Security")
 
   if(CURL_DEFAULT_SSL_BACKEND AND CURL_DEFAULT_SSL_BACKEND STREQUAL "secure-transport")
     set(_valid_default_ssl_backend TRUE)
@@ -674,19 +697,19 @@ if(CURL_USE_SECTRANSP)
 endif()
 
 if(_use_core_foundation_and_core_services)
-  find_library(COREFOUNDATION_FRAMEWORK "CoreFoundation")
+  find_library(COREFOUNDATION_FRAMEWORK NAMES "CoreFoundation")
   mark_as_advanced(COREFOUNDATION_FRAMEWORK)
-  find_library(CORESERVICES_FRAMEWORK "CoreServices")
-  mark_as_advanced(CORESERVICES_FRAMEWORK)
-
   if(NOT COREFOUNDATION_FRAMEWORK)
     message(FATAL_ERROR "CoreFoundation framework not found")
   endif()
+  list(APPEND CURL_LIBS "-framework CoreFoundation")
+
+  find_library(CORESERVICES_FRAMEWORK NAMES "CoreServices")
+  mark_as_advanced(CORESERVICES_FRAMEWORK)
   if(NOT CORESERVICES_FRAMEWORK)
     message(FATAL_ERROR "CoreServices framework not found")
   endif()
-
-  list(APPEND CURL_LIBS "-framework CoreFoundation" "-framework CoreServices")
+  list(APPEND CURL_LIBS "-framework CoreServices")
 endif()
 
 if(CURL_USE_OPENSSL)
@@ -888,7 +911,7 @@ if(ZSTD_FOUND)
   endif()
 endif()
 
-# Check symbol in an OpenSSL-like TLS backend, or in _extra_libs depending on it.
+# Check symbol in an OpenSSL-like TLS backend.
 macro(curl_openssl_check_symbol_exists _symbol _files _variable)
   cmake_push_check_state()
   if(USE_OPENSSL)
@@ -962,11 +985,10 @@ if(USE_ECH)
     if(HAVE_BORINGSSL OR HAVE_AWSLC)
       curl_openssl_check_symbol_exists("SSL_set1_ech_config_list" "openssl/ssl.h" HAVE_SSL_SET1_ECH_CONFIG_LIST)
     elseif(HAVE_OPENSSL)
-      curl_openssl_check_symbol_exists("SSL_ech_set1_echconfig" "openssl/ech.h" HAVE_SSL_ECH_SET1_ECHCONFIG)
+      curl_openssl_check_symbol_exists("SSL_set1_ech_config_list" "openssl/ech.h" HAVE_SSL_SET1_ECH_CONFIG_LIST)
     endif()
     if(HAVE_WOLFSSL_CTX_GENERATEECHCONFIG OR
-       HAVE_SSL_SET1_ECH_CONFIG_LIST OR
-       HAVE_SSL_ECH_SET1_ECHCONFIG)
+       HAVE_SSL_SET1_ECH_CONFIG_LIST)
       set(HAVE_ECH 1)
     endif()
     if(NOT HAVE_ECH)
@@ -976,6 +998,15 @@ if(USE_ECH)
     endif()
   else()
     message(FATAL_ERROR "ECH requires ECH-enablded OpenSSL, BoringSSL, AWS-LC or wolfSSL")
+  endif()
+endif()
+
+option(USE_SSLS_EXPORT "Enable SSL session export support" OFF)
+if(USE_SSLS_EXPORT)
+  if(_ssl_enabled)
+    message(STATUS "SSL export enabled.")
+  else()
+    message(FATAL_ERROR "SSL session export requires SSL enabled")
   endif()
 endif()
 
@@ -1411,8 +1442,8 @@ endif()
 if(_curl_ca_bundle_supported)
   set(CURL_CA_BUNDLE "auto" CACHE
     STRING "Path to the CA bundle. Set 'none' to disable or 'auto' for auto-detection. Defaults to 'auto'.")
-  set(CURL_CA_FALLBACK OFF CACHE BOOL
-    "Use built-in CA store of TLS backend. Defaults to OFF")
+  set(CURL_CA_FALLBACK OFF CACHE
+    BOOL "Use built-in CA store of TLS backend. Defaults to OFF")
   set(CURL_CA_PATH "auto" CACHE
     STRING "Location of default CA path. Set 'none' to disable or 'auto' for auto-detection. Defaults to 'auto'.")
   set(CURL_CA_EMBED "" CACHE
@@ -1631,7 +1662,6 @@ check_symbol_exists("basename"        "${CURL_INCLUDES};string.h" HAVE_BASENAME)
 check_symbol_exists("opendir"         "dirent.h" HAVE_OPENDIR)
 check_function_exists("poll"          HAVE_POLL)  # poll.h
 check_symbol_exists("socket"          "${CURL_INCLUDES}" HAVE_SOCKET)  # winsock2.h sys/socket.h
-check_function_exists("sched_yield"   HAVE_SCHED_YIELD)
 check_symbol_exists("socketpair"      "${CURL_INCLUDES}" HAVE_SOCKETPAIR)  # sys/socket.h
 check_symbol_exists("recv"            "${CURL_INCLUDES}" HAVE_RECV)  # proto/bsdsocket.h sys/types.h sys/socket.h
 check_symbol_exists("send"            "${CURL_INCLUDES}" HAVE_SEND)  # proto/bsdsocket.h sys/types.h sys/socket.h
@@ -1679,6 +1709,7 @@ check_function_exists("setmode"         HAVE_SETMODE)
 check_function_exists("setrlimit"       HAVE_SETRLIMIT)
 
 if(NOT WIN32)
+  check_function_exists("sched_yield"   HAVE_SCHED_YIELD)
   check_symbol_exists("strcasecmp"      "string.h" HAVE_STRCASECMP)
   check_symbol_exists("stricmp"         "string.h" HAVE_STRICMP)
   check_symbol_exists("strcmpi"         "string.h" HAVE_STRCMPI)
@@ -1704,9 +1735,6 @@ if(APPLE)
   check_function_exists("mach_absolute_time" HAVE_MACH_ABSOLUTE_TIME)
 endif()
 check_symbol_exists("inet_ntop" "${CURL_INCLUDES};stdlib.h;string.h" HAVE_INET_NTOP)  # arpa/inet.h
-if(MSVC AND (MSVC_VERSION LESS_EQUAL 1600))
-  set(HAVE_INET_NTOP OFF)
-endif()
 check_symbol_exists("inet_pton" "${CURL_INCLUDES};stdlib.h;string.h" HAVE_INET_PTON)  # arpa/inet.h
 
 check_symbol_exists("fsetxattr" "sys/xattr.h" HAVE_FSETXATTR)
@@ -1866,9 +1894,11 @@ include(CMake/OtherTests.cmake)
 
 add_definitions("-DHAVE_CONFIG_H")
 
-# For Windows, all compilers used by CMake should support large files
 if(WIN32)
-  set(USE_WIN32_LARGE_FILES ON)
+  # _fseeki64() requires VS2005
+  if(NOT MSVC OR (MSVC_VERSION GREATER_EQUAL 1400))
+    set(USE_WIN32_LARGE_FILES ON)
+  endif()
 
   # Use the manifest embedded in the Windows Resource
   set(CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} -DCURL_EMBED_MANIFEST")
@@ -1888,14 +1918,13 @@ if(MSVC)
   # Disable default manifest added by CMake
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")
 
-  add_definitions("-D_CRT_SECURE_NO_DEPRECATE" "-D_CRT_NONSTDC_NO_DEPRECATE")
   if(CMAKE_C_FLAGS MATCHES "/W[0-4]")
     string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
   endif()
 
-  # Use multithreaded compilation on VS 2008+
+  # Use multithreaded compilation on VS2008+
   if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1500)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
   endif()
@@ -2043,6 +2072,7 @@ curl_add_if("WSS"           NOT CURL_DISABLE_WEBSOCKETS AND _ssl_enabled)
 if(_items)
   list(SORT _items)
 endif()
+set(CURL_SUPPORTED_PROTOCOLS_LIST "${_items}")
 string(REPLACE ";" " " SUPPORT_PROTOCOLS "${_items}")
 string(TOLOWER "${SUPPORT_PROTOCOLS}" _support_protocols_lower)
 message(STATUS "Protocols: ${_support_protocols_lower}")
@@ -2050,7 +2080,7 @@ message(STATUS "Protocols: ${_support_protocols_lower}")
 # Clear list and try to detect available features
 set(_items "")
 curl_add_if("SSL"           _ssl_enabled)
-curl_add_if("IPv6"          ENABLE_IPV6)
+curl_add_if("IPv6"          USE_IPV6)
 curl_add_if("UnixSockets"   USE_UNIX_SOCKETS)
 curl_add_if("libz"          HAVE_LIBZ)
 curl_add_if("brotli"        HAVE_BROTLI)
@@ -2089,6 +2119,7 @@ curl_add_if("TrackMemory"   ENABLE_CURLDEBUG)
 curl_add_if("ECH"           _ssl_enabled AND HAVE_ECH)
 curl_add_if("PSL"           USE_LIBPSL)
 curl_add_if("CAcert"        CURL_CA_EMBED_SET)
+curl_add_if("SSLS-EXPORT"   _ssl_enabled AND USE_SSLS_EXPORT)
 if(_items)
   if(NOT CMAKE_VERSION VERSION_LESS 3.13)
     list(SORT _items CASE INSENSITIVE)
@@ -2096,6 +2127,7 @@ if(_items)
     list(SORT _items)
   endif()
 endif()
+set(CURL_SUPPORTED_FEATURES_LIST "${_items}")
 string(REPLACE ";" " " SUPPORT_FEATURES "${_items}")
 message(STATUS "Features: ${SUPPORT_FEATURES}")
 
@@ -2350,10 +2382,13 @@ if(NOT CURL_DISABLE_INSTALL)
     ${_generated_version_config}")
 
   # Consumed custom variables:
+  #   CURLVERSION
   #   LIB_SELECTED
   #   TARGETS_EXPORT_NAME
   #   USE_OPENSSL
   #   HAVE_LIBZ
+  #   CURL_SUPPORTED_FEATURES_LIST
+  #   CURL_SUPPORTED_PROTOCOLS_LIST
   configure_package_config_file("CMake/curl-config.cmake.in"
     "${_project_config}"
     INSTALL_DESTINATION ${_install_cmake_dir}
@@ -2367,15 +2402,6 @@ if(NOT CURL_DISABLE_INSTALL)
 
   install(FILES ${_version_config} ${_project_config}
     DESTINATION ${_install_cmake_dir})
-
-  # Workaround for MSVS10 to avoid the Dialog Hell
-  # FIXME: This could be removed with future version of CMake.
-  if(MSVC_VERSION EQUAL 1600)
-    set(_curl_sln_filename "${CMAKE_CURRENT_BINARY_DIR}/CURL.sln")
-    if(EXISTS "${_curl_sln_filename}")
-      file(APPEND "${_curl_sln_filename}" "\n# This should be regenerated!\n")
-    endif()
-  endif()
 
   if(NOT TARGET curl_uninstall)
     configure_file(

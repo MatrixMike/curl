@@ -300,6 +300,7 @@ static const struct LongShort aliases[]= {
   {"ssl-no-revoke",              ARG_BOOL, ' ', C_SSL_NO_REVOKE},
   {"ssl-reqd",                   ARG_BOOL, ' ', C_SSL_REQD},
   {"ssl-revoke-best-effort",     ARG_BOOL, ' ', C_SSL_REVOKE_BEST_EFFORT},
+  {"ssl-sessions",               ARG_FILE, ' ', C_SSL_SESSIONS},
   {"sslv2",                      ARG_NONE, '2', C_SSLV2},
   {"sslv3",                      ARG_NONE, '3', C_SSLV3},
   {"stderr",                     ARG_FILE, ' ', C_STDERR},
@@ -1131,13 +1132,11 @@ static ParameterError parse_ech(struct GlobalConfig *global,
     err = PARAM_LIBCURL_DOESNT_SUPPORT;
   else if(strlen(nextarg) > 4 && strncasecompare("pn:", nextarg, 3)) {
     /* a public_name */
-    nextarg += 3;
     err = getstr(&config->ech_public, nextarg, DENY_BLANK);
   }
   else if(strlen(nextarg) > 5 && strncasecompare("ecl:", nextarg, 4)) {
     /* an ECHConfigList */
-    nextarg += 4;
-    if('@' != *nextarg) {
+    if('@' != *(nextarg + 4)) {
       err = getstr(&config->ech_config, nextarg, DENY_BLANK);
     }
     else {
@@ -1145,7 +1144,7 @@ static ParameterError parse_ech(struct GlobalConfig *global,
       char *tmpcfg = NULL;
       FILE *file;
 
-      nextarg++;        /* skip over '@' */
+      nextarg += 5;        /* skip over 'ecl:@' */
       if(!strcmp("-", nextarg)) {
         file = stdin;
       }
@@ -2469,6 +2468,12 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_SSL_REVOKE_BEST_EFFORT: /* --ssl-revoke-best-effort */
       if(feature_ssl)
         config->ssl_revoke_best_effort = TRUE;
+      break;
+    case C_SSL_SESSIONS: /* --ssl-sessions */
+      if(feature_ssls_export)
+        err = getstr(&global->ssl_sessions, nextarg, DENY_BLANK);
+      else
+        err = PARAM_LIBCURL_DOESNT_SUPPORT;
       break;
     case C_TCP_FASTOPEN: /* --tcp-fastopen */
       config->tcp_fastopen = TRUE;

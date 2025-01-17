@@ -418,7 +418,7 @@ static SANITIZEcode msdosify(char **const sanitized, const char *file_name,
   }
 
   *sanitized = strdup(dos_name);
-  return (*sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY);
+  return *sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY;
 }
 #endif /* MSDOS */
 
@@ -547,11 +547,10 @@ static SANITIZEcode rename_if_reserved_dos(char **const sanitized,
 #endif
 
   *sanitized = strdup(fname);
-  return (*sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY);
+  return *sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY;
 }
 
-#if defined(MSDOS) && (defined(__DJGPP__) || defined(__GO32__))
-
+#ifdef __DJGPP__
 /*
  * Disable program default argument globbing. We do it on our own.
  */
@@ -560,8 +559,7 @@ char **__crt0_glob_function(char *arg)
   (void)arg;
   return (char **)0;
 }
-
-#endif /* MSDOS && (__DJGPP__ || __GO32__) */
+#endif
 
 #ifdef _WIN32
 

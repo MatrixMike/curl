@@ -283,8 +283,10 @@ static void usage(const char *msg)
   fprintf(stderr,
     "  -A number  abort transfer after `number` response bytes\n"
     "  -F number  fail writing response after `number` response bytes\n"
+    "  -M number  max concurrent connections to a host\n"
     "  -P number  pause transfer after `number` response bytes\n"
     "  -r <host>:<port>:<addr>  resolve information\n"
+    "  -T number  max concurrent connections total\n"
     "  -V http_version (http/1.1, h2, h3) http version to use\n"
   );
 }
@@ -312,10 +314,11 @@ int main(int argc, char *argv[])
   struct curl_slist *host = NULL;
   char *resolve = NULL;
   size_t max_host_conns = 0;
+  size_t max_total_conns = 0;
   int fresh_connect = 0;
   int result = 0;
 
-  while((ch = getopt(argc, argv, "aefhm:n:xA:F:M:P:r:V:")) != -1) {
+  while((ch = getopt(argc, argv, "aefhm:n:xA:F:M:P:r:T:V:")) != -1) {
     switch(ch) {
     case 'h':
       usage(NULL);
@@ -354,6 +357,9 @@ int main(int argc, char *argv[])
     case 'r':
       free(resolve);
       resolve = strdup(optarg);
+      break;
+    case 'T':
+      max_total_conns = (size_t)strtol(optarg, NULL, 10);
       break;
     case 'V': {
       if(!strcmp("http/1.1", optarg))
@@ -413,6 +419,8 @@ int main(int argc, char *argv[])
 
   multi_handle = curl_multi_init();
   curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
+  curl_multi_setopt(multi_handle, CURLMOPT_MAX_TOTAL_CONNECTIONS,
+                    (long)max_total_conns);
   curl_multi_setopt(multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS,
                     (long)max_host_conns);
 

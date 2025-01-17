@@ -46,6 +46,7 @@
 #include "multihandle.h"
 #include "sigpipe.h"
 #include "vtls/vtls.h"
+#include "vtls/vtls_scache.h"
 #include "http_proxy.h"
 #include "http2.h"
 #include "socketpair.h"
@@ -59,7 +60,7 @@
 /*
   CURL_SOCKET_HASH_TABLE_SIZE should be a prime number. Increasing it from 97
   to 911 takes on a 32-bit machine 4 x 804 = 3211 more bytes. Still, every
-  CURL handle takes 45-50 K memory, therefore this 3K are not significant.
+  curl handle takes 6K memory, therefore this 3K are not significant.
 */
 #ifndef CURL_SOCKET_HASH_TABLE_SIZE
 #define CURL_SOCKET_HASH_TABLE_SIZE 911
@@ -71,6 +72,10 @@
 
 #ifndef CURL_DNS_HASH_SIZE
 #define CURL_DNS_HASH_SIZE 71
+#endif
+
+#ifndef CURL_TLS_SESSION_SIZE
+#define CURL_TLS_SESSION_SIZE 25
 #endif
 
 #define CURL_MULTI_HANDLE 0x000bab1e
@@ -395,9 +400,10 @@ static void multi_addmsg(struct Curl_multi *multi, struct Curl_message *msg)
   Curl_llist_append(&multi->msglist, msg, &msg->list);
 }
 
-struct Curl_multi *Curl_multi_handle(size_t hashsize, /* socket hash */
+struct Curl_multi *Curl_multi_handle(size_t hashsize,  /* socket hash */
                                      size_t chashsize, /* connection hash */
-                                     size_t dnssize) /* dns hash */
+                                     size_t dnssize,   /* dns hash */
+                                     size_t sesssize)  /* TLS session cache */
 {
   struct Curl_multi *multi = calloc(1, sizeof(struct Curl_multi));
 
@@ -414,7 +420,10 @@ struct Curl_multi *Curl_multi_handle(size_t hashsize, /* socket hash */
                  Curl_hash_str, Curl_str_key_compare, ph_freeentry);
 
   if(Curl_cpool_init(&multi->cpool, Curl_on_disconnect,
-                         multi, NULL, chashsize))
+                     multi, NULL, chashsize))
+    goto error;
+
+  if(Curl_ssl_scache_create(sesssize, 2, &multi->ssl_scache))
     goto error;
 
   Curl_llist_init(&multi->msglist, NULL);
@@ -447,6 +456,7 @@ error:
   Curl_hash_destroy(&multi->proto_hash);
   Curl_hash_destroy(&multi->hostcache);
   Curl_cpool_destroy(&multi->cpool);
+  Curl_ssl_scache_destroy(multi->ssl_scache);
   free(multi);
   return NULL;
 }
@@ -455,7 +465,8 @@ CURLM *curl_multi_init(void)
 {
   return Curl_multi_handle(CURL_SOCKET_HASH_TABLE_SIZE,
                            CURL_CONNECTION_HASH_SIZE,
-                           CURL_DNS_HASH_SIZE);
+                           CURL_DNS_HASH_SIZE,
+                           CURL_TLS_SESSION_SIZE);
 }
 
 #if defined(DEBUGBUILD) && !defined(CURL_DISABLE_VERBOSE_STRINGS)
@@ -922,7 +933,7 @@ CURLMcode curl_multi_remove_handle(CURLM *m, CURL *d)
 /* Return TRUE if the application asked for multiplexing */
 bool Curl_multiplex_wanted(const struct Curl_multi *multi)
 {
-  return (multi && (multi->multiplexing));
+  return multi && multi->multiplexing;
 }
 
 /*
@@ -3031,8 +3042,10 @@ CURLMcode curl_multi_perform(CURLM *m, int *running_handles)
 
   sigpipe_apply(multi->cpool.idata, &pipe_st);
   Curl_cpool_multi_perform(multi);
-
   sigpipe_restore(&pipe_st);
+
+  if(multi_ischanged(m, TRUE))
+    process_pending_handles(m);
 
   /*
    * Simply remove all expired timers from the splay since handles are dealt
@@ -3134,6 +3147,7 @@ CURLMcode curl_multi_cleanup(CURLM *m)
     Curl_hash_destroy(&multi->proto_hash);
     Curl_hash_destroy(&multi->hostcache);
     Curl_psl_destroy(&multi->psl);
+    Curl_ssl_scache_destroy(multi->ssl_scache);
 
 #ifdef USE_WINSOCK
     WSACloseEvent(multi->wsa_event);
@@ -3629,6 +3643,9 @@ out:
   }
   sigpipe_restore(&mrc.pipe_st);
 
+  if(multi_ischanged(multi, TRUE))
+    process_pending_handles(multi);
+
   if(running_handles)
     *running_handles = (int)multi->num_alive;
 
@@ -3686,9 +3703,6 @@ CURLMcode curl_multi_setopt(CURLM *m,
     break;
   case CURLMOPT_MAX_TOTAL_CONNECTIONS:
     multi->max_total_connections = va_arg(param, long);
-    /* for now, let this also decide the max number of connections
-     * in shutdown handling */
-    multi->max_shutdown_connections = va_arg(param, long);
     break;
     /* options formerly used for pipelining */
   case CURLMOPT_MAX_PIPELINE_LENGTH:
@@ -4136,7 +4150,7 @@ void Curl_set_in_callback(struct Curl_easy *data, bool value)
 
 bool Curl_is_in_callback(struct Curl_easy *data)
 {
-  return (data && data->multi && data->multi->in_callback);
+  return data && data->multi && data->multi->in_callback;
 }
 
 unsigned int Curl_multi_max_concurrent_streams(struct Curl_multi *multi)

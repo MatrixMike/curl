@@ -83,6 +83,7 @@
 
 #include "urldata.h"
 #include <curl/curl.h>
+#include "cfilters.h"
 #include "sendf.h"
 #include "escape.h"
 #include "progress.h"
@@ -153,7 +154,7 @@ static void _ldap_free_urldesc(LDAPURLDesc *ludp);
 #define ldap_err2string ldap_err2stringA
 #endif
 
-#if defined(USE_WIN32_LDAP) && defined(_MSC_VER) && (_MSC_VER <= 1600)
+#if defined(USE_WIN32_LDAP) && defined(_MSC_VER) && (_MSC_VER <= 1700)
 /* Workaround for warning:
    'type cast' : conversion from 'int' to 'void *' of greater size */
 #undef LDAP_OPT_ON
@@ -351,7 +352,7 @@ static CURLcode ldap_do(struct Curl_easy *data, bool *done)
   }
 
   /* Get the URL scheme (either ldap or ldaps) */
-  if(conn->given->flags & PROTOPT_SSL)
+  if(Curl_conn_is_ssl(conn, FIRSTSOCKET))
     ldap_ssl = 1;
   infof(data, "LDAP local: trying to establish %s connection",
         ldap_ssl ? "encrypted" : "cleartext");
@@ -805,7 +806,7 @@ static int str2scope(const char *p)
     return LDAP_SCOPE_SUBTREE;
   if(strcasecompare(p, "subtree"))
     return LDAP_SCOPE_SUBTREE;
-  return (-1);
+  return -1;
 }
 
 /*
@@ -1087,7 +1088,7 @@ static int _ldap_url_parse(struct Curl_easy *data,
     ludp = NULL;
   }
   *ludpp = ludp;
-  return (rc);
+  return rc;
 }
 
 static void _ldap_free_urldesc(LDAPURLDesc *ludp)

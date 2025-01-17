@@ -840,7 +840,7 @@ static CURLcode smb_connection_state(struct Curl_easy *data, bool *done)
 
   if(smbc->state == SMB_CONNECTING) {
 #ifdef USE_SSL
-    if((conn->handler->flags & PROTOPT_SSL)) {
+    if(Curl_conn_is_ssl(conn, FIRSTSOCKET)) {
       bool ssl_done = FALSE;
       result = Curl_conn_connect(data, FIRSTSOCKET, FALSE, &ssl_done);
       if(result && result != CURLE_AGAIN)
@@ -915,7 +915,7 @@ static CURLcode smb_connection_state(struct Curl_easy *data, bool *done)
  */
 static void get_posix_time(time_t *out, curl_off_t timestamp)
 {
-  timestamp -= 116444736000000000;
+  timestamp -= CURL_OFF_T_C(116444736000000000);
   timestamp /= 10000000;
 #if SIZEOF_TIME_T < SIZEOF_CURL_OFF_T
   if(timestamp > TIME_T_MAX)
