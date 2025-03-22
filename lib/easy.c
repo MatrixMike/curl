@@ -105,7 +105,7 @@ static curl_simple_lock s_lock = CURL_SIMPLE_LOCK_INIT;
  * ways, but at this point it must be defined as the system-supplied strdup
  * so the callback pointer is initialized correctly.
  */
-#if defined(_WIN32_WCE)
+#if defined(UNDER_CE)
 #define system_strdup _strdup
 #elif !defined(HAVE_STRDUP)
 #define system_strdup Curl_strdup
@@ -565,7 +565,8 @@ static CURLcode wait_or_timeout(struct Curl_multi *multi, struct events *ev)
     struct curltime before;
 
     /* populate the fds[] array */
-    for(m = ev->list, f = &fds[0]; m; m = m->next) {
+    f = &fds[0];
+    for(m = ev->list; m; m = m->next) {
       f->fd = m->socket.fd;
       f->events = m->socket.events;
       f->revents = 0;
@@ -751,11 +752,6 @@ static CURLcode easy_perform(struct Curl_easy *data, bool events)
   if(!data)
     return CURLE_BAD_FUNCTION_ARGUMENT;
 
-  if(data->conn) {
-    failf(data, "cannot use again while associated with a connection");
-    return CURLE_BAD_FUNCTION_ARGUMENT;
-  }
-
   if(data->set.errorbuffer)
     /* clear this as early as possible */
     data->set.errorbuffer[0] = 0;
@@ -765,6 +761,19 @@ static CURLcode easy_perform(struct Curl_easy *data, bool events)
   if(data->multi) {
     failf(data, "easy handle already used in multi handle");
     return CURLE_FAILED_INIT;
+  }
+
+  /* if the handle has a connection still attached (it is/was a connect-only
+     handle) then disconnect before performing */
+  if(data->conn) {
+    struct connectdata *c;
+    curl_socket_t s;
+    Curl_detach_connection(data);
+    s = Curl_getconnectinfo(data, &c);
+    if((s != CURL_SOCKET_BAD) && c) {
+      Curl_conn_terminate(data, c, TRUE);
+    }
+    DEBUGASSERT(!data->conn);
   }
 
   if(data->multi_easy)
@@ -1187,10 +1196,10 @@ CURLcode curl_easy_pause(CURL *d, int action)
   }
 
 out:
-  if(!result && !data->state.done && keep_changed)
-    /* This transfer may have been moved in or out of the bundle, update the
-       corresponding socket callback, if used */
-    result = Curl_updatesocket(data);
+  if(!result && !data->state.done && keep_changed && data->multi)
+    /* pause/unpausing may result in multi event changes */
+    if(Curl_multi_ev_assess_xfer(data->multi, data))
+      result = CURLE_ABORTED_BY_CALLBACK;
 
   if(recursive)
     /* this might have called a callback recursively which might have set this

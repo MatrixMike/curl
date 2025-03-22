@@ -52,6 +52,7 @@ INTERNALDOCS =                                  \
  internals/HASH.md                              \
  internals/LLIST.md                             \
  internals/MQTT.md                              \
+ internals/MULTI-EV.md                          \
  internals/NEW-PROTOCOL.md                      \
  internals/README.md                            \
  internals/SPLAY.md                             \
@@ -87,6 +88,7 @@ EXTRA_DIST =                                    \
  HSTS.md                                        \
  HTTP-COOKIES.md                                \
  HTTP3.md                                       \
+ HTTPSRR.md                                     \
  INFRASTRUCTURE.md                              \
  INSTALL                                        \
  INSTALL-CMAKE.md                               \

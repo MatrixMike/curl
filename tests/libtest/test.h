@@ -44,6 +44,13 @@
 
 #include "curl_printf.h"
 
+/* GCC <4.6 does not support '#pragma GCC diagnostic push' and
+   does not support 'pragma GCC diagnostic' inside functions. */
+#if (defined(__GNUC__) && \
+  ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))))
+#define CURL_GNUC_DIAG
+#endif
+
 #ifdef _WIN32
 #define sleep(sec) Sleep((sec)*1000)
 #endif
@@ -58,6 +65,7 @@
 
 extern char *libtest_arg2; /* set by first.c to the argv[2] or NULL */
 extern char *libtest_arg3; /* set by first.c to the argv[3] or NULL */
+extern char *libtest_arg4; /* set by first.c to the argv[4] or NULL */
 
 /* argc and argv as passed in to the main() function */
 extern int test_argc;
