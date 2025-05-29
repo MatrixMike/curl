@@ -63,6 +63,7 @@ BearSSL
 Benoit
 BeOS
 bitmask
+bitset
 bitwise
 Björn
 Bjørn
@@ -175,6 +176,7 @@ DELE
 DER
 dereference
 dereferences
+DES
 deselectable
 deserialization
 Deserialized
@@ -447,6 +449,8 @@ librtmp
 libs
 libssh
 libssh2
+libtest
+libtests
 Libtool
 libtool
 libuv
@@ -722,6 +726,7 @@ Ruslan
 rustc
 Rustls
 rustls
+rustup
 Sagula
 SanDisk
 SAS

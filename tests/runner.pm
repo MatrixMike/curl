@@ -99,6 +99,7 @@ use testutil qw(
     clearlogs
     logmsg
     runclient
+    exerunner
     shell_quote
     subbase64
     subsha256base64file
@@ -923,6 +924,12 @@ sub singletest_run {
             }
             $CMDLINE=$LIBDIR . $tool;
         }
+        elsif($tool =~ /^tool/) {
+            if($bundle) {
+                $tool = "tunits" . exe_ext('TOOL')
+            }
+            $CMDLINE=$TUNITDIR . $tool;
+        }
         elsif($tool =~ /^unit/) {
             if($bundle) {
                 $tool = "units" . exe_ext('TOOL')
@@ -935,8 +942,15 @@ sub singletest_run {
             return (-1, 0, 0, "", "", 0);
         }
 
+        $CMDLINE=exerunner() . $CMDLINE;
+
         if($bundle) {
-            $CMDLINE.=" $tool_name";
+            if($gdbthis) {
+                $cmdargs =" $tool_name$cmdargs";
+            }
+            else {
+                $CMDLINE.=" $tool_name";
+            }
         }
 
         $DBGCURL=$CMDLINE;
@@ -971,7 +985,7 @@ sub singletest_run {
     }
 
     if(!$tool) {
-        $CMDLINE=shell_quote($CURL);
+        $CMDLINE=exerunner() . shell_quote($CURL);
         if((!$cmdhash{'option'}) || ($cmdhash{'option'} !~ /no-q/)) {
             $CMDLINE .= " -q";
         }
@@ -1333,8 +1347,8 @@ sub controlleripccall {
     if(!$multiprocess) {
         # Call the remote function here in single process mode
         ipcrecv();
-     }
-     return 0;
+    }
+    return 0;
 }
 
 ###################################################################

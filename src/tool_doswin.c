@@ -39,8 +39,8 @@
 #include "tool_bname.h"
 #include "tool_doswin.h"
 
-#include "curlx.h"
-#include "memdebug.h" /* keep this as LAST include */
+#include <curlx.h>
+#include <memdebug.h> /* keep this as LAST include */
 
 #ifdef _WIN32
 #  undef  PATH_MAX
@@ -177,7 +177,6 @@ SANITIZEcode sanitize_file_name(char **const sanitized, const char *file_name,
 
     if(clip) {
       *clip = '\0';
-      len = clip - target;
     }
   }
 
@@ -595,7 +594,7 @@ CURLcode FindWin32CACert(struct OperationConfig *config,
   res_len = SearchPath(NULL, bundle_file, NULL, PATH_MAX, buf, &ptr);
   if(res_len > 0) {
     char *mstr = curlx_convert_tchar_to_UTF8(buf);
-    curlx_safefree(config->cacert);
+    tool_safefree(config->cacert);
     if(mstr)
       config->cacert = strdup(mstr);
     curlx_unicodefree(mstr);
