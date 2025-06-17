@@ -78,7 +78,7 @@ static ParameterError getstrn(char **str, const char *val,
     return PARAM_NO_MEM;
 
   memcpy(*str, val, len);
-  (*str)[len] = 0; /* null terminate */
+  (*str)[len] = 0; /* null-terminate */
 
   return PARAM_OK;
 }
@@ -88,7 +88,7 @@ static const struct LongShort aliases[]= {
   {"abstract-unix-socket",       ARG_FILE, ' ', C_ABSTRACT_UNIX_SOCKET},
   {"alpn",                       ARG_BOOL|ARG_NO|ARG_TLS, ' ', C_ALPN},
   {"alt-svc",                    ARG_STRG, ' ', C_ALT_SVC},
-  {"anyauth",                    ARG_BOOL, ' ', C_ANYAUTH},
+  {"anyauth",                    ARG_NONE, ' ', C_ANYAUTH},
   {"append",                     ARG_BOOL, 'a', C_APPEND},
   {"aws-sigv4",                  ARG_STRG, ' ', C_AWS_SIGV4},
   {"basic",                      ARG_BOOL, ' ', C_BASIC},
@@ -153,7 +153,7 @@ static const struct LongShort aliases[]= {
   {"ftp-alternative-to-user",    ARG_STRG, ' ', C_FTP_ALTERNATIVE_TO_USER},
   {"ftp-create-dirs",            ARG_BOOL, ' ', C_FTP_CREATE_DIRS},
   {"ftp-method",                 ARG_STRG, ' ', C_FTP_METHOD},
-  {"ftp-pasv",                   ARG_BOOL, ' ', C_FTP_PASV},
+  {"ftp-pasv",                   ARG_NONE, ' ', C_FTP_PASV},
   {"ftp-port",                   ARG_STRG, 'P', C_FTP_PORT},
   {"ftp-pret",                   ARG_BOOL, ' ', C_FTP_PRET},
   {"ftp-skip-pasv-ip",           ARG_BOOL, ' ', C_FTP_SKIP_PASV_IP},
@@ -509,14 +509,13 @@ static void
 GetFileAndPassword(const char *nextarg, char **file, char **password)
 {
   char *certname, *passphrase;
-  if(nextarg) {
-    parse_cert_parameter(nextarg, &certname, &passphrase);
-    free(*file);
-    *file = certname;
-    if(passphrase) {
-      free(*password);
-      *password = passphrase;
-    }
+  /* nextarg is never NULL here */
+  parse_cert_parameter(nextarg, &certname, &passphrase);
+  free(*file);
+  *file = certname;
+  if(passphrase) {
+    free(*password);
+    *password = passphrase;
   }
 }
 
@@ -1090,7 +1089,8 @@ static ParameterError parse_url(struct GlobalConfig *global,
                                 struct OperationConfig *config,
                                 const char *nextarg)
 {
-  if(nextarg && (nextarg[0] == '@')) {
+  /* nextarg is never NULL here */
+  if(nextarg[0] == '@') {
     /* read URLs from a file, treat all as -O */
     struct dynbuf line;
     ParameterError err = PARAM_OK;
@@ -1698,8 +1698,14 @@ static ParameterError opt_none(struct GlobalConfig *global,
                                const struct LongShort *a)
 {
   switch(a->cmd) {
+  case C_ANYAUTH: /* --anyauth */
+    config->authtype = CURLAUTH_ANY;
+    break;
   case C_DUMP_CA_EMBED: /* --dump-ca-embed */
     return PARAM_CA_EMBED_REQUESTED;
+  case C_FTP_PASV: /* --ftp-pasv */
+    tool_safefree(config->ftpport);
+    break;
 
   case C_HTTP1_0: /* --http1.0 */
     /* HTTP version 1.0 */
@@ -1827,11 +1833,6 @@ static ParameterError opt_bool(struct GlobalConfig *global,
     break;
   case C_BASIC: /* --basic */
     togglebit(toggle, &config->authtype, CURLAUTH_BASIC);
-    break;
-  case C_ANYAUTH: /* --anyauth */
-    if(toggle)
-      config->authtype = CURLAUTH_ANY;
-    /* --no-anyauth simply does not touch it */
     break;
 #ifdef USE_WATT32
   case C_WDEBUG: /* --wdebug */
@@ -1998,7 +1999,7 @@ static ParameterError opt_bool(struct GlobalConfig *global,
     config->doh_verifystatus = toggle;
     break;
   case C_FALSE_START: /* --false-start */
-    config->falsestart = toggle;
+    opt_depr(global, a);
     break;
   case C_SSL_NO_REVOKE: /* --ssl-no-revoke */
     config->ssl_no_revoke = toggle;
@@ -2294,9 +2295,6 @@ static ParameterError opt_filestring(struct GlobalConfig *global,
     break;
   case C_URL: /* --url */
     err = parse_url(global, config, nextarg);
-    break;
-  case C_FTP_PASV: /* --ftp-pasv */
-    tool_safefree(config->ftpport);
     break;
   case C_SOCKS5: /* --socks5 */
     /*  socks5 proxy to use, and resolves the name locally and passes on the
@@ -2883,6 +2881,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
         err = PARAM_OPTION_UNKNOWN;
         break;
       }
+      toggle = !(a->desc & ARG_NO);
     }
     if((a->desc & ARG_TLS) && !feature_ssl) {
       err = PARAM_LIBCURL_DOESNT_SUPPORT;
