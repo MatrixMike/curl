@@ -21,21 +21,21 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "curl_hmac.h"
 #include "curl_md5.h"
 
-static CURLcode test_unit1612(char *arg)
+static CURLcode test_unit1612(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 
-#if (defined(USE_CURL_NTLM_CORE) && !defined(USE_WINDOWS_SSPI)) \
-    || !defined(CURL_DISABLE_DIGEST_AUTH)
+#if (defined(USE_CURL_NTLM_CORE) && !defined(USE_WINDOWS_SSPI)) || \
+  !defined(CURL_DISABLE_DIGEST_AUTH)
 
-  const char password[] = "Pa55worD";
-  const char string1[] = "1";
-  const char string2[] = "hello-you-fool";
+  static const char password[] = "Pa55worD";
+  static const char string1[] = "1";
+  static const char string2[] = "hello-you-fool";
   unsigned char output[HMAC_MD5_LENGTH];
   unsigned char *testp = output;
 

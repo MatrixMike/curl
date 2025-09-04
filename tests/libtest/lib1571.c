@@ -21,11 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "memdebug.h"
 
-static CURLcode test_lib1571(char *URL)
+static CURLcode test_lib1571(const char *URL)
 {
   CURLcode res;
   CURL *curl;
@@ -50,7 +50,7 @@ static CURLcode test_lib1571(char *URL)
     test_setopt(curl, CURLOPT_POSTFIELDS, "moo");
   }
   if(testnum == 1581) {
-    test_setopt(curl, CURLOPT_POSTREDIR, (long)CURL_REDIR_POST_301);
+    test_setopt(curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_301);
   }
 
   test_setopt(curl, CURLOPT_CUSTOMREQUEST, "IGLOO");

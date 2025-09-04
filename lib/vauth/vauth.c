@@ -27,8 +27,8 @@
 #include <curl/curl.h>
 
 #include "vauth.h"
+#include "../strdup.h"
 #include "../urldata.h"
-#include "../strcase.h"
 #include "../curlx/multibyte.h"
 #include "../curl_printf.h"
 #include "../url.h"
@@ -54,7 +54,7 @@
  *
  * Returns a pointer to the newly allocated SPN.
  */
-#if !defined(USE_WINDOWS_SSPI)
+#ifndef USE_WINDOWS_SSPI
 char *Curl_auth_build_spn(const char *service, const char *host,
                           const char *realm)
 {
@@ -79,7 +79,7 @@ TCHAR *Curl_auth_build_spn(const char *service, const char *host,
   TCHAR *tchar_spn = NULL;
   TCHAR *dupe_tchar_spn = NULL;
 
-  (void) realm;
+  (void)realm;
 
   /* Note: We could use DsMakeSPN() or DsClientMakeSpnForTargetServer() rather
      than doing this ourselves but the first is only available in Windows XP
@@ -157,7 +157,7 @@ bool Curl_auth_allowed_to_host(struct Curl_easy *data)
   return !data->state.this_is_a_follow ||
          data->set.allow_auth_to_other_hosts ||
          (data->state.first_host &&
-          strcasecompare(data->state.first_host, conn->host.name) &&
+          curl_strequal(data->state.first_host, conn->host.name) &&
           (data->state.first_remote_port == conn->remote_port) &&
           (data->state.first_remote_protocol == conn->handler->protocol));
 }

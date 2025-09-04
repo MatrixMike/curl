@@ -21,12 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include <fcntl.h>
-
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /* 3x download!
@@ -35,7 +31,7 @@
  * 3. with multi interface
  */
 
-static CURLcode test_lib575(char *URL)
+static CURLcode test_lib575(const char *URL)
 {
   CURL *handle = NULL;
   CURL *duphandle = NULL;

@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "memdebug.h"
 
@@ -41,7 +41,7 @@ static int t599_progress_callback(void *clientp, double dltotal,
   return 0;
 }
 
-static CURLcode test_lib599(char *URL)
+static CURLcode test_lib599(const char *URL)
 {
   CURL *curl;
   CURLcode res = CURLE_OK;

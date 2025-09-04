@@ -21,14 +21,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
+#include "first.h"
 
 #include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 #if !defined(HAVE_POLL) && !defined(USE_WINSOCK) && !defined(FD_SETSIZE)
@@ -196,7 +191,7 @@ static int t537_test_rlimit(int keep_open)
    * avoid a low memory condition once the file descriptors are
    * open. System conditions that could make the test fail should
    * be addressed in the precheck phase. This chunk of memory shall
-   * be always free()ed before exiting the test_rlimit() function so
+   * be always free()ed before exiting the t537_test_rlimit() function so
    * that it becomes available to the test.
    */
 
@@ -440,7 +435,7 @@ static int t537_test_rlimit(int keep_open)
   return 0;
 }
 
-static CURLcode test_lib537(char *URL)
+static CURLcode test_lib537(const char *URL)
 {
   CURLcode res;
   CURL *curl;
@@ -490,13 +485,13 @@ test_cleanup:
   return res;
 }
 
-#else /* defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT) */
+#else /* HAVE_GETRLIMIT && HAVE_SETRLIMIT */
 
-static CURLcode test_lib537(char *URL)
+static CURLcode test_lib537(const char *URL)
 {
   (void)URL;
   curl_mprintf("system lacks necessary system function(s)");
   return TEST_ERR_MAJOR_BAD; /* skip test */
 }
 
-#endif /* defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT) */
+#endif /* HAVE_GETRLIMIT && HAVE_SETRLIMIT */

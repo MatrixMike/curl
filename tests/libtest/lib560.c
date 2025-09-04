@@ -21,10 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
@@ -37,7 +35,7 @@
  * fast/different compared to the real/distant servers we saw the bug happen
  * with.
  */
-static CURLcode test_lib560(char *URL)
+static CURLcode test_lib560(const char *URL)
 {
   CURL *http_handle = NULL;
   CURLM *multi_handle = NULL;

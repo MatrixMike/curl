@@ -21,14 +21,10 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "tool_cfgable.h"
 #include "tool_doswin.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "memdebug.h" /* LAST include file */
 
@@ -62,7 +58,7 @@ static char *getcurlcodestr(int cc)
 }
 #endif
 
-static CURLcode test_tool1604(char *arg)
+static CURLcode test_tool1604(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

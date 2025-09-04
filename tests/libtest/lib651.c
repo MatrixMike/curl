@@ -21,11 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "memdebug.h"
 
-static CURLcode test_lib651(char *URL)
+static CURLcode test_lib651(const char *URL)
 {
   static char testbuf[17000]; /* more than 16K */
 
@@ -55,7 +55,7 @@ static CURLcode test_lib651(char *URL)
                         CURLFORM_COPYCONTENTS, testbuf,
                         CURLFORM_END);
   if(formrc)
-    curl_mprintf("curl_formadd(1) = %d\n", (int) formrc);
+    curl_mprintf("curl_formadd(1) = %d\n", formrc);
 
 
   curl = curl_easy_init();

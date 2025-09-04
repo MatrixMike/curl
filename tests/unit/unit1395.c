@@ -21,14 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
-
-/* copied from urlapi.c */
-extern int dedotdotify(const char *input, size_t clen, char **out);
-
+#include "unitcheck.h"
 #include "memdebug.h"
+#include "unitprotos.h"
 
-static CURLcode test_unit1395(char *arg)
+static CURLcode test_unit1395(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

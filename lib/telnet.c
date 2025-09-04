@@ -57,7 +57,6 @@
 #include "system_win32.h"
 #include "arpa_telnet.h"
 #include "select.h"
-#include "strcase.h"
 #include "curlx/warnless.h"
 #include "curlx/strparse.h"
 
@@ -171,7 +170,7 @@ static void sendsuboption(struct Curl_easy *data,
 
 static CURLcode telnet_do(struct Curl_easy *data, bool *done);
 static CURLcode telnet_done(struct Curl_easy *data,
-                                 CURLcode, bool premature);
+                            CURLcode, bool premature);
 static CURLcode send_telnet_data(struct Curl_easy *data,
                                  struct TELNET *tn,
                                  char *buffer, ssize_t nread);
@@ -189,10 +188,10 @@ const struct Curl_handler Curl_handler_telnet = {
   ZERO_NULL,                            /* connect_it */
   ZERO_NULL,                            /* connecting */
   ZERO_NULL,                            /* doing */
-  ZERO_NULL,                            /* proto_getsock */
-  ZERO_NULL,                            /* doing_getsock */
-  ZERO_NULL,                            /* domore_getsock */
-  ZERO_NULL,                            /* perform_getsock */
+  ZERO_NULL,                            /* proto_pollset */
+  ZERO_NULL,                            /* doing_pollset */
+  ZERO_NULL,                            /* domore_pollset */
+  ZERO_NULL,                            /* perform_pollset */
   ZERO_NULL,                            /* disconnect */
   ZERO_NULL,                            /* write_resp */
   ZERO_NULL,                            /* write_resp_hd */
@@ -839,7 +838,7 @@ static CURLcode check_telnet_options(struct Curl_easy *data,
       switch(olen) {
       case 5:
         /* Terminal type */
-        if(strncasecompare(option, "TTYPE", 5)) {
+        if(curl_strnequal(option, "TTYPE", 5)) {
           tn->subopt_ttype = arg;
           tn->us_preferred[CURL_TELOPT_TTYPE] = CURL_YES;
           break;
@@ -849,7 +848,7 @@ static CURLcode check_telnet_options(struct Curl_easy *data,
 
       case 8:
         /* Display variable */
-        if(strncasecompare(option, "XDISPLOC", 8)) {
+        if(curl_strnequal(option, "XDISPLOC", 8)) {
           tn->subopt_xdisploc = arg;
           tn->us_preferred[CURL_TELOPT_XDISPLOC] = CURL_YES;
           break;
@@ -859,7 +858,7 @@ static CURLcode check_telnet_options(struct Curl_easy *data,
 
       case 7:
         /* Environment variable */
-        if(strncasecompare(option, "NEW_ENV", 7)) {
+        if(curl_strnequal(option, "NEW_ENV", 7)) {
           beg = curl_slist_append(tn->telnet_vars, arg);
           if(!beg) {
             result = CURLE_OUT_OF_MEMORY;
@@ -874,7 +873,7 @@ static CURLcode check_telnet_options(struct Curl_easy *data,
 
       case 2:
         /* Window Size */
-        if(strncasecompare(option, "WS", 2)) {
+        if(curl_strnequal(option, "WS", 2)) {
           const char *p = arg;
           curl_off_t x = 0;
           curl_off_t y = 0;
@@ -896,7 +895,7 @@ static CURLcode check_telnet_options(struct Curl_easy *data,
 
       case 6:
         /* To take care or not of the 8th bit in data exchange */
-        if(strncasecompare(option, "BINARY", 6)) {
+        if(curl_strnequal(option, "BINARY", 6)) {
           int binary_option = atoi(arg);
           if(binary_option != 1) {
             tn->us_preferred[CURL_TELOPT_BINARY] = CURL_NO;
@@ -1288,8 +1287,8 @@ static CURLcode send_telnet_data(struct Curl_easy *data,
 static CURLcode telnet_done(struct Curl_easy *data,
                             CURLcode status, bool premature)
 {
-  (void)status; /* unused */
-  (void)premature; /* not used */
+  (void)status;
+  (void)premature;
   Curl_meta_remove(data, CURL_META_TELNET_EASY);
   return CURLE_OK;
 }

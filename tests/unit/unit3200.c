@@ -21,11 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 #include "curl_get_line.h"
 #include "memdebug.h"
 
-static CURLcode test_unit3200(char *arg)
+static CURLcode test_unit3200(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

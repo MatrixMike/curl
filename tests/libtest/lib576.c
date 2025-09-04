@@ -21,9 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
 #include "memdebug.h"
 
 struct chunk_data {
@@ -47,7 +46,7 @@ static long chunk_bgn(const void *f, void *ptr, int remains)
       curl_mprintf(" (parsed => %o)", finfo->perm);
     curl_mprintf("\n");
   }
-  curl_mprintf("Size:         %ldB\n", (long)finfo->size);
+  curl_mprintf("Size:         %" CURL_FORMAT_CURL_OFF_T "B\n", finfo->size);
   if(finfo->strings.user)
     curl_mprintf("User:         %s\n", finfo->strings.user);
   if(finfo->strings.group)
@@ -97,7 +96,7 @@ static long chunk_end(void *ptr)
   return CURL_CHUNK_END_FUNC_OK;
 }
 
-static CURLcode test_lib576(char *URL)
+static CURLcode test_lib576(const char *URL)
 {
   CURL *handle = NULL;
   CURLcode res = CURLE_OK;

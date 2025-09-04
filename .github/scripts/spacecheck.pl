@@ -30,7 +30,7 @@ my @tabs = (
     "^m4/zz40-xc-ovr.m4",
     "Makefile\\.(am|example)\$",
     "/mkfile",
-    "\\.(bat|sln|vc)\$",
+    "\\.(sln|vc)\$",
     "^tests/data/test",
 );
 
@@ -131,8 +131,14 @@ while(my $filename = <$git_ls_files>) {
     }
 
     if(!fn_match($filename, @space_at_eol) &&
-        $content =~ /[ \t]\n/) {
-        push @err, "content: has line-ending whitespace";
+       $content =~ /[ \t]\n/) {
+        my $line;
+        for my $l (split(/\n/, $content)) {
+            $line++;
+            if($l =~ /[ \t]$/) {
+                push @err, "line $line: trailing whitespace";
+            }
+        }
     }
 
     if($content ne "" &&
@@ -161,7 +167,13 @@ while(my $filename = <$git_ls_files>) {
         for my $e (split(//, $non)) {
             $hex .= sprintf("%s%02x", $hex ? " ": "", ord($e));
         }
-        push @err, "content: has non-ASCII: '$non' ($hex)";
+        my $line;
+        for my $l (split(/\n/, $content)) {
+            $line++;
+            if($l =~ /([\x80-\xff]+)/) {
+                push @err, "line $line: has non-ASCII: '$non' ($hex)";
+            }
+        }
     }
 
     if(@err) {

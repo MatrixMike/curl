@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "urldata.h"
 #include "connect.h"
@@ -65,7 +65,7 @@ static void t1303_stop(struct Curl_easy *easy)
  * N           various values of now
  */
 
-static CURLcode test_unit1303(char *arg)
+static CURLcode test_unit1303(const char *arg)
 {
   struct Curl_easy *easy;
 

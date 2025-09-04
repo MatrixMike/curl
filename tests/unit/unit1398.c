@@ -21,20 +21,20 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #if defined(CURL_GNUC_DIAG) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat"
 #endif
 
-static CURLcode test_unit1398(char *arg)
+static CURLcode test_unit1398(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 
   int rc;
   char buf[3] = {'b', 'u', 'g'};
-  const char *str = "bug";
+  static const char *str = "bug";
   int width = 3;
   char output[130];
 

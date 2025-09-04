@@ -23,15 +23,11 @@
  ***************************************************************************/
 /* used for test case 533, 534, 535 and 546 */
 
-#include "test.h"
+#include "first.h"
 
-#include <fcntl.h>
-
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
-static CURLcode test_lib533(char *URL)
+static CURLcode test_lib533(const char *URL)
 {
   CURLcode res = CURLE_OK;
   CURL *curl = NULL;

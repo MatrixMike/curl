@@ -26,11 +26,13 @@
 
 #include "curlx/timediff.h"
 
+struct bufq;
 struct Curl_cfilter;
 struct Curl_easy;
 struct Curl_dns_entry;
 struct connectdata;
 struct ip_quadruple;
+struct curl_tlssessioninfo;
 
 /* Callback to destroy resources held by this filter instance.
  * Implementations MUST NOT chain calls to cf->next.
@@ -52,23 +54,6 @@ typedef CURLcode Curl_cft_shutdown(struct Curl_cfilter *cf,
 typedef CURLcode Curl_cft_connect(struct Curl_cfilter *cf,
                                   struct Curl_easy *data,
                                   bool *done);
-
-/* Return the hostname and port the connection goes to.
- * This may change with the connection state of filters when tunneling
- * is involved.
- * @param cf     the filter to ask
- * @param data   the easy handle currently active
- * @param phost  on return, points to the relevant, real hostname.
- *               this is owned by the connection.
- * @param pdisplay_host  on return, points to the printable hostname.
- *               this is owned by the connection.
- * @param pport  on return, contains the port number
- */
-typedef void     Curl_cft_get_host(struct Curl_cfilter *cf,
-                                   struct Curl_easy *data,
-                                   const char **phost,
-                                   const char **pdisplay_host,
-                                   int *pport);
 
 struct easy_pollset;
 
@@ -95,7 +80,7 @@ struct easy_pollset;
  * @param data   the easy handle the pollset is about
  * @param ps     the pollset (inout) for the easy handle
  */
-typedef void     Curl_cft_adjust_pollset(struct Curl_cfilter *cf,
+typedef CURLcode Curl_cft_adjust_pollset(struct Curl_cfilter *cf,
                                          struct Curl_easy *data,
                                          struct easy_pollset *ps);
 
@@ -166,6 +151,17 @@ typedef CURLcode Curl_cft_cntrl(struct Curl_cfilter *cf,
  * - CF_QUERY_NEED_FLUSH: TRUE iff any of the filters have unsent data
  * - CF_QUERY_IP_INFO: res1 says if connection used IPv6, res2 is the
  *                   ip quadruple
+ * - CF_QUERY_HOST_PORT: the remote hostname and port a filter talks to
+ * - CF_QUERY_SSL_INFO: fill out the passed curl_tlssessioninfo with the
+ *                      internal from the SSL secured connection when
+ *                      available.
+ * - CF_QUERY_SSL_CTX_INFO: same as CF_QUERY_SSL_INFO, but give the SSL_CTX
+ *                      when available, or the same internal pointer
+ *                      when the TLS stack does not differentiate.
+ * - CF_QUERY_ALPN_NEGOTIATED: The ALPN selected by the server as
+                        null-terminated string or NULL if none
+                        selected/handshake not done. Implemented by filter
+                        types CF_TYPE_SSL or CF_TYPE_IP_CONNECT.
  */
 /*      query                             res1       res2     */
 #define CF_QUERY_MAX_CONCURRENT     1  /* number     -        */
@@ -177,6 +173,14 @@ typedef CURLcode Curl_cft_cntrl(struct Curl_cfilter *cf,
 #define CF_QUERY_NEED_FLUSH         7  /* TRUE/FALSE - */
 #define CF_QUERY_IP_INFO            8  /* TRUE/FALSE struct ip_quadruple */
 #define CF_QUERY_HTTP_VERSION       9  /* number (10/11/20/30)   -  */
+/* pass in a `const struct Curl_sockaddr_ex **` as `pres2`. Gets set
+ * to NULL when not connected. */
+#define CF_QUERY_REMOTE_ADDR       10  /* -          `Curl_sockaddr_ex *` */
+#define CF_QUERY_HOST_PORT         11  /* port       const char * */
+#define CF_QUERY_SSL_INFO          12  /* -    struct curl_tlssessioninfo * */
+#define CF_QUERY_SSL_CTX_INFO      13  /* -    struct curl_tlssessioninfo * */
+#define CF_QUERY_TRANSPORT         14  /* TRNSPRT_*  - * */
+#define CF_QUERY_ALPN_NEGOTIATED   15  /* -          const char * */
 
 /**
  * Query the cfilter for properties. Filters ignorant of a query will
@@ -213,7 +217,6 @@ struct Curl_cftype {
   Curl_cft_connect *do_connect;           /* establish connection */
   Curl_cft_close *do_close;               /* close conn */
   Curl_cft_shutdown *do_shutdown;         /* shutdown conn */
-  Curl_cft_get_host *get_host;            /* host filter talks to */
   Curl_cft_adjust_pollset *adjust_pollset; /* adjust transfer poll set */
   Curl_cft_data_pending *has_data_pending;/* conn has data pending */
   Curl_cft_send *do_send;                 /* send data */
@@ -241,10 +244,7 @@ void Curl_cf_def_destroy_this(struct Curl_cfilter *cf,
 
 /* Default implementations for the type functions, implementing pass-through
  * the filter chain. */
-void     Curl_cf_def_get_host(struct Curl_cfilter *cf, struct Curl_easy *data,
-                              const char **phost, const char **pdisplay_host,
-                              int *pport);
-void     Curl_cf_def_adjust_pollset(struct Curl_cfilter *cf,
+CURLcode Curl_cf_def_adjust_pollset(struct Curl_cfilter *cf,
                                     struct Curl_easy *data,
                                     struct easy_pollset *ps);
 bool     Curl_cf_def_data_pending(struct Curl_cfilter *cf,
@@ -337,12 +337,6 @@ CURLcode Curl_conn_cf_cntrl(struct Curl_cfilter *cf,
                             int event, int arg1, void *arg2);
 
 /**
- * Determine if the connection filter chain is using SSL to the remote host
- * (or will be once connected).
- */
-bool Curl_conn_cf_is_ssl(struct Curl_cfilter *cf);
-
-/**
  * Get the socket used by the filter chain starting at `cf`.
  * Returns CURL_SOCKET_BAD if not available.
  */
@@ -351,10 +345,16 @@ curl_socket_t Curl_conn_cf_get_socket(struct Curl_cfilter *cf,
 
 CURLcode Curl_conn_cf_get_ip_info(struct Curl_cfilter *cf,
                                   struct Curl_easy *data,
-                                  int *is_ipv6, struct ip_quadruple *ipquad);
+                                  bool *is_ipv6, struct ip_quadruple *ipquad);
 
 bool Curl_conn_cf_needs_flush(struct Curl_cfilter *cf,
                               struct Curl_easy *data);
+
+unsigned char Curl_conn_cf_get_transport(struct Curl_cfilter *cf,
+                                         struct Curl_easy *data);
+
+const char *Curl_conn_cf_get_alpn_negotiated(struct Curl_cfilter *cf,
+                                             struct Curl_easy *data);
 
 #define CURL_CF_SSL_DEFAULT  -1
 #define CURL_CF_SSL_DISABLE  0
@@ -395,6 +395,19 @@ bool Curl_conn_is_ip_connected(struct Curl_easy *data, int sockindex);
  */
 bool Curl_conn_is_ssl(struct connectdata *conn, int sockindex);
 
+/*
+ * Fill `info` with information about the TLS instance securing
+ * the connection when available, otherwise e.g. when
+ * Curl_conn_is_ssl() is FALSE, return FALSE.
+ */
+bool Curl_conn_get_ssl_info(struct Curl_easy *data,
+                            struct connectdata *conn, int sockindex,
+                            struct curl_tlssessioninfo *info);
+
+CURLcode Curl_conn_get_ip_info(struct Curl_easy *data,
+                               struct connectdata *conn, int sockindex,
+                               bool *is_ipv6, struct ip_quadruple *ipquad);
+
 /**
  * Connection provides multiplexing of easy handles at `socketindex`.
  */
@@ -406,6 +419,14 @@ bool Curl_conn_is_multiplex(struct connectdata *conn, int sockindex);
  */
 unsigned char Curl_conn_http_version(struct Curl_easy *data,
                                      struct connectdata *conn);
+
+/* Get the TRNSPRT_* the connection is using */
+unsigned char Curl_conn_get_transport(struct Curl_easy *data,
+                                      struct connectdata *conn);
+
+/* Get the negotiated ALPN protocol or NULL if none in play */
+const char *Curl_conn_get_alpn_negotiated(struct Curl_easy *data,
+                                          struct connectdata *conn);
 
 /**
  * Close the filter chain at `sockindex` for connection `data->conn`.
@@ -439,10 +460,15 @@ bool Curl_conn_needs_flush(struct Curl_easy *data, int sockindex);
 CURLcode Curl_conn_flush(struct Curl_easy *data, int sockindex);
 
 /**
- * Return the socket used on data's connection for the index.
+ * Return the socket used on data's connection for FIRSTSOCKET,
+ * querying filters if the whole chain has not connected yet.
  * Returns CURL_SOCKET_BAD if not available.
  */
-curl_socket_t Curl_conn_get_socket(struct Curl_easy *data, int sockindex);
+curl_socket_t Curl_conn_get_first_socket(struct Curl_easy *data);
+
+/* Return a pointer to the connected socket address or NULL. */
+const struct Curl_sockaddr_ex *
+Curl_conn_get_remote_addr(struct Curl_easy *data, int sockindex);
 
 /**
  * Tell filters to forget about the socket at sockindex.
@@ -450,18 +476,18 @@ curl_socket_t Curl_conn_get_socket(struct Curl_easy *data, int sockindex);
 void Curl_conn_forget_socket(struct Curl_easy *data, int sockindex);
 
 /**
- * Adjust the pollset for the filter chain startgin at `cf`.
+ * Adjust the pollset for the filter chain starting at `cf`.
  */
-void Curl_conn_cf_adjust_pollset(struct Curl_cfilter *cf,
-                                 struct Curl_easy *data,
-                                 struct easy_pollset *ps);
+CURLcode Curl_conn_cf_adjust_pollset(struct Curl_cfilter *cf,
+                                     struct Curl_easy *data,
+                                     struct easy_pollset *ps);
 
 /**
  * Adjust pollset from filters installed at transfer's connection.
  */
-void Curl_conn_adjust_pollset(struct Curl_easy *data,
-                              struct connectdata *conn,
-                              struct easy_pollset *ps);
+CURLcode Curl_conn_adjust_pollset(struct Curl_easy *data,
+                                  struct connectdata *conn,
+                                  struct easy_pollset *ps);
 
 /**
  * Curl_poll() the filter chain at `cf` with timeout `timeout_ms`.
@@ -488,6 +514,28 @@ CURLcode Curl_cf_recv(struct Curl_easy *data, int sockindex, char *buf,
 CURLcode Curl_cf_send(struct Curl_easy *data, int sockindex,
                       const void *buf, size_t len, bool eos,
                       size_t *pnwritten);
+
+/**
+ * Receive bytes from connection filter `cf` into `bufq`.
+ * Convenience wrappter around `Curl_bufq_sipn()`,
+ * so users do not have to implement a callback.
+ */
+CURLcode Curl_cf_recv_bufq(struct Curl_cfilter *cf,
+                           struct Curl_easy *data,
+                           struct bufq *bufq,
+                           size_t maxlen,
+                           size_t *pnread);
+
+/**
+ * Send bytes in `bufq` using connection filter `cf`.
+ * A convenience wrapper around `Curl_bufq_write_pass()`,
+ * so users do not have to implement a callback.
+ */
+CURLcode Curl_cf_send_bufq(struct Curl_cfilter *cf,
+                           struct Curl_easy *data,
+                           struct bufq *bufq,
+                           const unsigned char *buf, size_t blen,
+                           size_t *pnwritten);
 
 /**
  * Notify connection filters that they need to setup data for
@@ -534,9 +582,17 @@ CURLcode Curl_conn_keep_alive(struct Curl_easy *data,
 #ifdef UNITTESTS
 void Curl_cf_def_close(struct Curl_cfilter *cf, struct Curl_easy *data);
 #endif
-void Curl_conn_get_host(struct Curl_easy *data, int sockindex,
-                        const char **phost, const char **pdisplay_host,
-                        int *pport);
+
+/**
+ * Get the remote hostname and port that the connection is currently
+ * talking to (or will talk to).
+ * Once connected or before connect starts,
+ * it is `conn->host.name` and `conn->remote_port`.
+ * During connect, when tunneling proxies are involved (http or socks),
+ * it will be the name and port the proxy currently negotiates with.
+ */
+void Curl_conn_get_current_host(struct Curl_easy *data, int sockindex,
+                                const char **phost, int *pport);
 
 /**
  * Get the maximum number of parallel transfers the connection
@@ -576,56 +632,6 @@ CURLcode Curl_conn_send(struct Curl_easy *data, int sockindex,
                         const void *buf, size_t blen, bool eos,
                         size_t *pnwritten);
 
-
-void Curl_pollset_reset(struct Curl_easy *data,
-                        struct easy_pollset *ps);
-
-/* Change the poll flags (CURL_POLL_IN/CURL_POLL_OUT) to the poll set for
- * socket `sock`. If the socket is not already part of the poll set, it
- * will be added.
- * If the socket is present and all poll flags are cleared, it will be removed.
- */
-void Curl_pollset_change(struct Curl_easy *data,
-                         struct easy_pollset *ps, curl_socket_t sock,
-                         int add_flags, int remove_flags);
-
-void Curl_pollset_set(struct Curl_easy *data,
-                      struct easy_pollset *ps, curl_socket_t sock,
-                      bool do_in, bool do_out);
-
-#define Curl_pollset_add_in(data, ps, sock) \
-          Curl_pollset_change((data), (ps), (sock), CURL_POLL_IN, 0)
-#define Curl_pollset_add_out(data, ps, sock) \
-          Curl_pollset_change((data), (ps), (sock), CURL_POLL_OUT, 0)
-#define Curl_pollset_add_inout(data, ps, sock) \
-          Curl_pollset_change((data), (ps), (sock), \
-                               CURL_POLL_IN|CURL_POLL_OUT, 0)
-#define Curl_pollset_set_in_only(data, ps, sock) \
-          Curl_pollset_change((data), (ps), (sock), \
-                               CURL_POLL_IN, CURL_POLL_OUT)
-#define Curl_pollset_set_out_only(data, ps, sock) \
-          Curl_pollset_change((data), (ps), (sock), \
-                               CURL_POLL_OUT, CURL_POLL_IN)
-
-void Curl_pollset_add_socks(struct Curl_easy *data,
-                            struct easy_pollset *ps,
-                            int (*get_socks_cb)(struct Curl_easy *data,
-                                                curl_socket_t *socks));
-
-/**
- * Check if the pollset, as is, wants to read and/or write regarding
- * the given socket.
- */
-void Curl_pollset_check(struct Curl_easy *data,
-                        struct easy_pollset *ps, curl_socket_t sock,
-                        bool *pwant_read, bool *pwant_write);
-
-/**
- * Return TRUE if the pollset contains socket with CURL_POLL_IN.
- */
-bool Curl_pollset_want_read(struct Curl_easy *data,
-                            struct easy_pollset *ps,
-                            curl_socket_t sock);
 
 /**
  * Types and macros used to keep the current easy handle in filter calls,

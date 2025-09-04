@@ -374,9 +374,6 @@ static CURLcode recv_CONNECT_resp(struct Curl_cfilter *cf,
   error = SELECT_OK;
   *done = FALSE;
 
-  if(!Curl_conn_data_pending(data, cf->sockindex))
-    return CURLE_OK;
-
   while(ts->keepon) {
     size_t nread;
     char byte;
@@ -685,11 +682,12 @@ out:
   return result;
 }
 
-static void cf_h1_proxy_adjust_pollset(struct Curl_cfilter *cf,
-                                        struct Curl_easy *data,
-                                        struct easy_pollset *ps)
+static CURLcode cf_h1_proxy_adjust_pollset(struct Curl_cfilter *cf,
+                                           struct Curl_easy *data,
+                                           struct easy_pollset *ps)
 {
   struct h1_tunnel_state *ts = cf->ctx;
+  CURLcode result = CURLE_OK;
 
   if(!cf->connected) {
     /* If we are not connected, but the filter "below" is
@@ -701,13 +699,14 @@ static void cf_h1_proxy_adjust_pollset(struct Curl_cfilter *cf,
          response headers or if we are still sending the request, wait
          for write. */
       if(tunnel_want_send(ts))
-        Curl_pollset_set_out_only(data, ps, sock);
+        result = Curl_pollset_set_out_only(data, ps, sock);
       else
-        Curl_pollset_set_in_only(data, ps, sock);
+        result = Curl_pollset_set_in_only(data, ps, sock);
     }
     else
-      Curl_pollset_set_out_only(data, ps, sock);
+      result = Curl_pollset_set_out_only(data, ps, sock);
   }
+  return result;
 }
 
 static void cf_h1_proxy_destroy(struct Curl_cfilter *cf,
@@ -740,7 +739,6 @@ struct Curl_cftype Curl_cft_h1_proxy = {
   cf_h1_proxy_connect,
   cf_h1_proxy_close,
   Curl_cf_def_shutdown,
-  Curl_cf_http_proxy_get_host,
   cf_h1_proxy_adjust_pollset,
   Curl_cf_def_data_pending,
   Curl_cf_def_send,
@@ -748,7 +746,7 @@ struct Curl_cftype Curl_cft_h1_proxy = {
   Curl_cf_def_cntrl,
   Curl_cf_def_conn_is_alive,
   Curl_cf_def_conn_keep_alive,
-  Curl_cf_def_query,
+  Curl_cf_http_proxy_query,
 };
 
 CURLcode Curl_cf_h1_proxy_insert_after(struct Curl_cfilter *cf_at,

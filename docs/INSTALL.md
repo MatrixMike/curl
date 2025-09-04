@@ -181,7 +181,7 @@ Building for Windows XP is required as a minimum.
 You can build curl with:
 
 - Microsoft Visual Studio 2008 v9.0 or later (`_MSC_VER >= 1500`)
-- MinGW-w64
+- MinGW-w64 3.0 or later (`__MINGW64_VERSION_MAJOR >= 3`)
 
 ## Building Windows DLLs and C runtime (CRT) linkage issues
 
@@ -340,7 +340,8 @@ environment, therefore, you cannot use the various disable-protocol options of
 the configure utility on this platform.
 
 You can use specific defines to disable specific protocols and features. See
-[CURL-DISABLE](CURL-DISABLE.md) for the full list.
+[CURL-DISABLE](https://github.com/curl/curl/blob/master/docs/CURL-DISABLE.md)
+for the full list.
 
 If you want to set any of these defines you have the following options:
 

@@ -21,15 +21,12 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#include <unistd.h>
 
 #define CONN_NUM 3
 #define TIME_BETWEEN_START_SECS 2
@@ -51,7 +48,7 @@ static void *t1565_run_thread(void *ptr)
   (void)ptr;
 
   for(i = 0; i < CONN_NUM; i++) {
-    wait_ms(TIME_BETWEEN_START_SECS * 1000);
+    curlx_wait_ms(TIME_BETWEEN_START_SECS * 1000);
 
     easy_init(easy);
 
@@ -88,7 +85,7 @@ test_cleanup:
   return NULL;
 }
 
-static CURLcode test_lib1565(char *URL)
+static CURLcode test_lib1565(const char *URL)
 {
   int still_running;
   int num;
@@ -135,7 +132,7 @@ static CURLcode test_lib1565(char *URL)
       else {
         curl_mfprintf(stderr,
                       "%s:%d Got an unexpected message from curl: %i\n",
-                      __FILE__, __LINE__, (int)message->msg);
+                      __FILE__, __LINE__, message->msg);
         res = TEST_ERR_MAJOR_BAD;
         goto test_cleanup;
       }
@@ -202,7 +199,7 @@ test_cleanup:
 }
 
 #else /* without pthread, this test doesn't work */
-static CURLcode test_lib1565(char *URL)
+static CURLcode test_lib1565(const char *URL)
 {
   (void)URL;
   return CURLE_OK;

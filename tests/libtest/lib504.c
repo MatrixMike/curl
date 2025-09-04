@@ -21,10 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
@@ -34,7 +32,7 @@
  * Use multi interface to get document over proxy with bad port number.
  * This caused the interface to "hang" in libcurl 7.10.2.
  */
-static CURLcode test_lib504(char *URL)
+static CURLcode test_lib504(const char *URL)
 {
   CURL *c = NULL;
   CURLcode res = CURLE_OK;

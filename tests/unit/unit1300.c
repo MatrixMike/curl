@@ -21,9 +21,10 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "llist.h"
+#include "unitprotos.h"
 
 static void test_Curl_llist_dtor(void *key, void *value)
 {
@@ -32,7 +33,7 @@ static void test_Curl_llist_dtor(void *key, void *value)
   (void)value;
 }
 
-static CURLcode test_unit1300(char *arg)
+static CURLcode test_unit1300(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

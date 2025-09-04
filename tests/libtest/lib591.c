@@ -21,19 +21,13 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
 /* lib591 is used for test cases 591, 592, 593 and 594 */
 
-#include <limits.h>
+#include "first.h"
 
-#include <fcntl.h>
-
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
-static CURLcode test_lib591(char *URL)
+static CURLcode test_lib591(const char *URL)
 {
   CURL *easy = NULL;
   CURLM *multi = NULL;

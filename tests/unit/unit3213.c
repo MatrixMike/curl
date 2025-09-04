@@ -21,11 +21,12 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "urldata.h"
 #include "uint-spbset.h"
 #include "curl_trc.h"
+#include "unitprotos.h"
 
 static void check_spbset(const char *name, const unsigned int *s, size_t slen)
 {
@@ -89,7 +90,7 @@ static void check_spbset(const char *name, const unsigned int *s, size_t slen)
   Curl_uint_spbset_destroy(&bset);
 }
 
-static CURLcode test_unit3213(char *arg)
+static CURLcode test_unit3213(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

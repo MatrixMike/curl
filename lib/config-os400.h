@@ -161,9 +161,6 @@
 /* Define if you have the <sys/sockio.h> header file. */
 #undef HAVE_SYS_SOCKIO_H
 
-/* Define if you have the <sys/stat.h> header file. */
-#define HAVE_SYS_STAT_H
-
 /* Define if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H
 
@@ -205,10 +202,6 @@
 
 /* Define if you have the ANSI C header files. */
 #define STDC_HEADERS
-
-/* Define to enable HTTP3 support (experimental, requires NGTCP2, quiche or
-   MSH3) */
-#undef USE_HTTP3
 
 /* Version number of package */
 #undef VERSION

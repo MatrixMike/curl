@@ -21,18 +21,16 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "testtrace.h"
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
  * Get a single URL without select().
  */
 
-static CURLcode test_lib573(char *URL)
+static CURLcode test_lib573(const char *URL)
 {
   CURL *c = NULL;
   CURLM *m = NULL;
@@ -55,9 +53,9 @@ static CURLcode test_lib573(char *URL)
   easy_setopt(c, CURLOPT_HEADER, 1L);
   easy_setopt(c, CURLOPT_URL, URL);
 
-  libtest_debug_config.nohex = 1;
-  libtest_debug_config.tracetime = 1;
-  easy_setopt(c, CURLOPT_DEBUGDATA, &libtest_debug_config);
+  debug_config.nohex = TRUE;
+  debug_config.tracetime = TRUE;
+  easy_setopt(c, CURLOPT_DEBUGDATA, &debug_config);
   easy_setopt(c, CURLOPT_DEBUGFUNCTION, libtest_debug_cb);
   easy_setopt(c, CURLOPT_VERBOSE, 1L);
 

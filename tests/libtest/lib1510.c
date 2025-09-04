@@ -21,13 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
-static CURLcode test_lib1510(char *URL)
+static CURLcode test_lib1510(const char *URL)
 {
   static const int NUM_URLS = 4;
 
@@ -37,8 +35,8 @@ static CURLcode test_lib1510(char *URL)
   char target_url[256];
   char dnsentry[256];
   struct curl_slist *slist = NULL, *slist2;
-  char *port = libtest_arg3;
-  char *address = libtest_arg2;
+  const char *port = libtest_arg3;
+  const char *address = libtest_arg2;
 
   (void)URL;
 

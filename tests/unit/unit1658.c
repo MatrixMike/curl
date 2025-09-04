@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "doh.h" /* from the lib dir */
 
@@ -114,7 +114,7 @@ static void rrresults(struct Curl_https_rrinfo *rr, CURLcode result)
   }
 }
 
-static CURLcode test_unit1658(char *arg)
+static CURLcode test_unit1658(const char *arg)
 {
   UNITTEST_BEGIN(t1658_setup())
 
@@ -361,7 +361,7 @@ static CURLcode test_unit1658(char *arg)
       "r:43|"
     },
     {
-      "alpn + two ipv4 addreses",
+      "alpn + two ipv4 addresses",
       (const unsigned char *)"\x00\x10" /* 16-bit prio */
       "\x00" /* no RNAME */
       "\x00\x01" /* RR (1 == ALPN) */
@@ -376,7 +376,7 @@ static CURLcode test_unit1658(char *arg)
       "r:0|p:16|.|alpn:10|ipv4:192.168.0.1|ipv4:192.168.0.2|"
     },
     {
-      "alpn + two ipv4 addreses in wrong order",
+      "alpn + two ipv4 addresses in wrong order",
       (const unsigned char *)"\x00\x10" /* 16-bit prio */
       "\x00" /* no RNAME */
       "\x00\x04" /* RR (4 == Ipv4hints) */
@@ -543,7 +543,7 @@ static CURLcode test_unit1658(char *arg)
 
 #else /* CURL_DISABLE_DOH or not HTTPSRR enabled */
 
-static CURLcode test_unit1658(char *arg)
+static CURLcode test_unit1658(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
   UNITTEST_END_SIMPLE

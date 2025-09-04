@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "urldata.h"
 #include "url.h"
@@ -69,7 +69,7 @@ static void t1620_parse(
   free(options);
 }
 
-static CURLcode test_unit1620(char *arg)
+static CURLcode test_unit1620(const char *arg)
 {
   UNITTEST_BEGIN(t1620_setup())
 

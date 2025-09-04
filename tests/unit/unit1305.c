@@ -21,19 +21,17 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #ifdef HAVE_NETINET_IN_H
-#  include <netinet/in.h>
+#include <netinet/in.h>
 #endif
 #ifdef HAVE_NETDB_H
-#  include <netdb.h>
+#include <netdb.h>
 #endif
 #ifdef HAVE_ARPA_INET_H
-#  include <arpa/inet.h>
+#include <arpa/inet.h>
 #endif
-
-#include <curlx.h>
 
 #include "hash.h"
 #include "hostip.h"
@@ -99,7 +97,7 @@ static CURLcode create_node(void)
   return CURLE_OK;
 }
 
-static CURLcode test_unit1305(char *arg)
+static CURLcode test_unit1305(const char *arg)
 {
   UNITTEST_BEGIN(t1305_setup())
 

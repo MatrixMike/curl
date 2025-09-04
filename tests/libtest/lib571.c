@@ -21,26 +21,19 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #ifdef HAVE_NETINET_IN_H
-#  include <netinet/in.h>
+#include <netinet/in.h>
 #endif
 #ifdef HAVE_NETDB_H
-#  include <netdb.h>
+#include <netdb.h>
 #endif
 #ifdef HAVE_ARPA_INET_H
-#  include <arpa/inet.h>
-#endif
-#ifdef HAVE_SYS_STAT_H
-#  include <sys/stat.h>
-#endif
-#ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
+#include <arpa/inet.h>
 #endif
 
 #include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 #define RTP_PKT_CHANNEL(p)   ((int)((unsigned char)((p)[1])))
@@ -52,11 +45,10 @@
 
 static int rtp_packet_count = 0;
 
-static size_t rtp_write(char *ptr, size_t size, size_t nmemb, void *stream)
+static size_t rtp_write(char *data, size_t size, size_t nmemb, void *stream)
 {
   static const char *RTP_DATA = "$_1234\n\0Rsdf";
 
-  char *data = (char *)ptr;
   int channel = RTP_PKT_CHANNEL(data);
   int message_size;
   int coded_size = RTP_PKT_LENGTH(data);
@@ -69,8 +61,7 @@ static size_t rtp_write(char *ptr, size_t size, size_t nmemb, void *stream)
   curl_mprintf("RTP: message size %d, channel %d\n", message_size, channel);
   if(message_size != coded_size) {
     curl_mprintf("RTP embedded size (%d) does not match "
-                 "the write size (%d).\n",
-                 coded_size, message_size);
+                 "the write size (%d).\n", coded_size, message_size);
     return failure;
   }
 
@@ -97,7 +88,7 @@ static size_t rtp_write(char *ptr, size_t size, size_t nmemb, void *stream)
   return size * nmemb;
 }
 
-static CURLcode test_lib571(char *URL)
+static CURLcode test_lib571(const char *URL)
 {
   CURLcode res;
   CURL *curl;

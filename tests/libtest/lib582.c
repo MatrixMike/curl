@@ -21,12 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include <fcntl.h>
-
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 struct t582_Sockets {
@@ -48,13 +44,13 @@ static void t582_removeFd(struct t582_Sockets *sockets, curl_socket_t fd,
   int i;
 
   if(mention)
-    curl_mfprintf(stderr, "Remove socket fd %d\n", (int) fd);
+    curl_mfprintf(stderr, "Remove socket fd %" FMT_SOCKET_T "\n", fd);
 
   for(i = 0; i < sockets->count; ++i) {
     if(sockets->sockets[i] == fd) {
       if(i < sockets->count - 1)
         memmove(&sockets->sockets[i], &sockets->sockets[i + 1],
-              sizeof(curl_socket_t) * (sockets->count - (i + 1)));
+                sizeof(curl_socket_t) * (sockets->count - (i + 1)));
       --sockets->count;
     }
   }
@@ -70,7 +66,7 @@ static void t582_addFd(struct t582_Sockets *sockets, curl_socket_t fd,
    * To ensure we only have each file descriptor once, we remove it then add
    * it again.
    */
-  curl_mfprintf(stderr, "Add socket fd %d for %s\n", (int) fd, what);
+  curl_mfprintf(stderr, "Add socket fd %" FMT_SOCKET_T " for %s\n", fd, what);
   t582_removeFd(sockets, fd, 0);
   /*
    * Allocate array storage when required.
@@ -101,8 +97,8 @@ static int t582_curlSocketCallback(CURL *easy, curl_socket_t s, int action,
 {
   struct t582_ReadWriteSockets *sockets = userp;
 
-  (void)easy; /* unused */
-  (void)socketp; /* unused */
+  (void)easy;
+  (void)socketp;
 
   if(action == CURL_POLL_IN || action == CURL_POLL_INOUT)
     t582_addFd(&sockets->read, s, "read");
@@ -123,11 +119,11 @@ static int t582_curlSocketCallback(CURL *easy, curl_socket_t s, int action,
  */
 static int t582_curlTimerCallback(CURLM *multi, long timeout_ms, void *userp)
 {
-  struct timeval *timeout = userp;
+  struct curltime *timeout = userp;
 
-  (void)multi; /* unused */
+  (void)multi;
   if(timeout_ms != -1) {
-    *timeout = tutil_tvnow();
+    *timeout = curlx_now();
     timeout->tv_usec += (int)timeout_ms * 1000;
   }
   else {
@@ -157,7 +153,7 @@ static int t582_checkForCompletion(CURLM *curl, int *success)
     }
     else {
       curl_mfprintf(stderr, "Got an unexpected message from curl: %i\n",
-                    (int)message->msg);
+                    message->msg);
       result = 1;
       *success = 0;
     }
@@ -165,17 +161,17 @@ static int t582_checkForCompletion(CURLM *curl, int *success)
   return result;
 }
 
-static int t582_getMicroSecondTimeout(struct timeval *timeout)
+static ssize_t t582_getMicroSecondTimeout(struct curltime *timeout)
 {
-  struct timeval now;
+  struct curltime now;
   ssize_t result;
-  now = tutil_tvnow();
+  now = curlx_now();
   result = (ssize_t)((timeout->tv_sec - now.tv_sec) * 1000000 +
     timeout->tv_usec - now.tv_usec);
   if(result < 0)
     result = 0;
 
-  return curlx_sztosi(result);
+  return result;
 }
 
 /**
@@ -186,12 +182,12 @@ static void t582_updateFdSet(struct t582_Sockets *sockets, fd_set* fdset,
 {
   int i;
   for(i = 0; i < sockets->count; ++i) {
-#if defined(__DJGPP__)
+#ifdef __DJGPP__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warith-conversion"
 #endif
     FD_SET(sockets->sockets[i], fdset);
-#if defined(__DJGPP__)
+#ifdef __DJGPP__
 #pragma GCC diagnostic pop
 #endif
     if(*maxFd < sockets->sockets[i] + 1) {
@@ -225,7 +221,7 @@ static void t582_checkFdSet(CURLM *curl, struct t582_Sockets *sockets,
   }
 }
 
-static CURLcode test_lib582(char *URL)
+static CURLcode test_lib582(const char *URL)
 {
   CURLcode res = CURLE_OK;
   CURL *curl = NULL;
@@ -235,7 +231,7 @@ static CURLcode test_lib582(char *URL)
   CURLM *m = NULL;
   struct t582_ReadWriteSockets sockets = {{NULL, 0, 0}, {NULL, 0, 0}};
   int success = 0;
-  struct timeval timeout = {0};
+  struct curltime timeout = {0};
   timeout.tv_sec = (time_t)-1;
 
   assert(test_argc >= 5);
@@ -269,10 +265,11 @@ static CURLcode test_lib582(char *URL)
     fclose(hd_src);
     return TEST_ERR_FSTAT;
   }
-  curl_mfprintf(stderr, "Set to upload %d bytes\n", (int)file_info.st_size);
+  curl_mfprintf(stderr, "Set to upload %" CURL_FORMAT_CURL_OFF_T " bytes\n",
+                (curl_off_t)file_info.st_size);
 
   res_global_init(CURL_GLOBAL_ALL);
-  if(res) {
+  if(res != CURLE_OK) {
     fclose(hd_src);
     return res;
   }
@@ -320,7 +317,7 @@ static CURLcode test_lib582(char *URL)
     t582_updateFdSet(&sockets.write, &writeSet, &maxFd);
 
     if(timeout.tv_sec != (time_t)-1) {
-      int usTimeout = t582_getMicroSecondTimeout(&timeout);
+      int usTimeout = curlx_sztosi(t582_getMicroSecondTimeout(&timeout));
       tv.tv_sec = usTimeout / 1000000;
       tv.tv_usec = usTimeout % 1000000;
     }

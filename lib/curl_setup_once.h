@@ -41,9 +41,7 @@
 #include <sys/types.h>
 #endif
 
-#ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
-#endif
 
 #if !defined(_WIN32) || defined(__MINGW32__)
 #include <sys/time.h>
@@ -63,10 +61,6 @@
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#if defined(HAVE_STDINT_H) || defined(USE_WOLFSSL)
-#include <stdint.h>
 #endif
 
 /* Macro to strip 'const' without triggering a compiler warning.
@@ -207,8 +201,6 @@ struct timeval {
 #else
 #  define CURL_SCLOSE(x)  close((x))
 #endif
-
-#define sclose(x)  CURL_SCLOSE(x)
 
 /*
  * Stack-independent version of fcntl() on sockets:

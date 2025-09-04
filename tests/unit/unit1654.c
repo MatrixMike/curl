@@ -21,12 +21,12 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "urldata.h"
 #include "altsvc.h"
 
-static CURLcode test_unit1654(char *arg)
+static CURLcode test_unit1654(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 
@@ -91,6 +91,20 @@ static CURLcode test_unit1654(char *arg)
 
   /* clear that one again and decrease the counter */
   result = Curl_altsvc_parse(curl, asi, "clear;\r\n",
+                             ALPN_h1, "curl.se", 80);
+  fail_if(result, "Curl_altsvc_parse(7) failed!");
+  fail_unless(Curl_llist_count(&asi->list) == 10, "wrong number of entries");
+
+  result =
+    Curl_altsvc_parse(curl, asi,
+                      "h2=\":443\", h3=\":443\"; "
+                      "persist = \"1\"; ma = 120;\r\n",
+                      ALPN_h1, "curl.se", 80);
+  fail_if(result, "Curl_altsvc_parse(6) failed!");
+  fail_unless(Curl_llist_count(&asi->list) == 12, "wrong number of entries");
+
+  /* clear - without semicolon */
+  result = Curl_altsvc_parse(curl, asi, "clear\r\n",
                              ALPN_h1, "curl.se", 80);
   fail_if(result, "Curl_altsvc_parse(7) failed!");
   fail_unless(Curl_llist_count(&asi->list) == 10, "wrong number of entries");

@@ -21,11 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
+#include "first.h"
 
 #include "memdebug.h"
 
@@ -33,7 +29,7 @@
  * Two FTP uploads, the second with no content sent.
  */
 
-static CURLcode test_lib541(char *URL)
+static CURLcode test_lib541(const char *URL)
 {
   CURL *curl;
   CURLcode res = CURLE_OK;

@@ -26,7 +26,8 @@
  * argv3 = second auth type
  */
 
-#include "test.h"
+#include "first.h"
+
 #include "memdebug.h"
 
 static CURLcode send_request(CURL *curl, const char *url, int seq,
@@ -82,7 +83,7 @@ static long parse_auth_name(const char *arg)
   return CURLAUTH_NONE;
 }
 
-static CURLcode test_lib2023(char *URL)  /* libauthretry */
+static CURLcode test_lib2023(const char *URL)  /* libauthretry */
 {
   CURLcode res;
   CURL *curl = NULL;

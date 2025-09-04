@@ -21,11 +21,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "testtrace.h"
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 struct t1540_transfer_status {
@@ -83,7 +81,7 @@ static size_t t1540_write_cb(char *ptr, size_t size, size_t nmemb, void *userp)
   return CURL_WRITEFUNC_PAUSE;
 }
 
-static CURLcode test_lib1540(char *URL)
+static CURLcode test_lib1540(const char *URL)
 {
   CURL *curls = NULL;
   CURLcode res = CURLE_OK;
@@ -108,9 +106,9 @@ static CURLcode test_lib1540(char *URL)
   easy_setopt(curls, CURLOPT_XFERINFODATA, &st);
   easy_setopt(curls, CURLOPT_NOPROGRESS, 0L);
 
-  libtest_debug_config.nohex = 1;
-  libtest_debug_config.tracetime = 1;
-  test_setopt(curls, CURLOPT_DEBUGDATA, &libtest_debug_config);
+  debug_config.nohex = TRUE;
+  debug_config.tracetime = TRUE;
+  test_setopt(curls, CURLOPT_DEBUGDATA, &debug_config);
   easy_setopt(curls, CURLOPT_DEBUGFUNCTION, libtest_debug_cb);
   easy_setopt(curls, CURLOPT_VERBOSE, 1L);
 

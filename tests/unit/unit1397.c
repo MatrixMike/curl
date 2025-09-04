@@ -21,11 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "vtls/hostcheck.h"
 
-static CURLcode test_unit1397(char *arg)
+static CURLcode test_unit1397(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 

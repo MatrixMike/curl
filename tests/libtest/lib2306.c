@@ -21,10 +21,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-#include "testtrace.h"
+#include "first.h"
 
-static CURLcode test_lib2306(char *URL)
+static CURLcode test_lib2306(const char *URL)
 {
   /* first a fine GET response, then a bad one */
   CURL *cl;

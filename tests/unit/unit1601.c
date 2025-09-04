@@ -21,19 +21,19 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #include "curl_md5.h"
 
-static CURLcode test_unit1601(char *arg)
+static CURLcode test_unit1601(const char *arg)
 {
   UNITTEST_BEGIN_SIMPLE
 
-#if (defined(USE_CURL_NTLM_CORE) && !defined(USE_WINDOWS_SSPI)) \
-    || !defined(CURL_DISABLE_DIGEST_AUTH)
+#if (defined(USE_CURL_NTLM_CORE) && !defined(USE_WINDOWS_SSPI)) || \
+  !defined(CURL_DISABLE_DIGEST_AUTH)
 
-  const char string1[] = "1";
-  const char string2[] = "hello-you-fool";
+  static const char string1[] = "1";
+  static const char string2[] = "hello-you-fool";
   unsigned char output[MD5_DIGEST_LEN];
   unsigned char *testp = output;
 

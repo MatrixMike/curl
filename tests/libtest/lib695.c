@@ -21,19 +21,19 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "memdebug.h"
 
 /* write callback that does nothing */
 static size_t write_it(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
-  (void) ptr;
-  (void) userdata;
+  (void)ptr;
+  (void)userdata;
   return size * nmemb;
 }
 
-static CURLcode test_lib695(char *URL)
+static CURLcode test_lib695(const char *URL)
 {
   CURL *curl = NULL;
   curl_mime *mime1 = NULL;

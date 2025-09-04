@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -29,8 +29,6 @@
 #ifdef HAVE_NETINET_IN6_H
 #include <netinet/in6.h>
 #endif
-
-#include "curlx/strparse.h"
 
 #include "memdebug.h" /* LAST include file */
 
@@ -41,7 +39,7 @@ static CURLcode t1664_setup(void)
   return res;
 }
 
-static CURLcode test_unit1664(char *arg)
+static CURLcode test_unit1664(const char *arg)
 {
   UNITTEST_BEGIN(t1664_setup())
 

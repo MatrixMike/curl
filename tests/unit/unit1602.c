@@ -21,13 +21,11 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
-
-#include <curlx.h>
+#include "unitcheck.h"
 
 #include "hash.h"
 
-#include <memdebug.h> /* LAST include file */
+#include "memdebug.h" /* LAST include file */
 
 static void t1602_mydtor(void *p)
 {
@@ -47,7 +45,7 @@ static void t1602_stop(struct Curl_hash *hash)
   Curl_hash_destroy(hash);
 }
 
-static CURLcode test_unit1602(char *arg)
+static CURLcode test_unit1602(const char *arg)
 {
   struct Curl_hash hash;
 

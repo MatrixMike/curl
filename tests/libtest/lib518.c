@@ -21,14 +21,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
+#include "first.h"
 
 #include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 #ifndef FD_SETSIZE
@@ -426,7 +421,7 @@ static int t518_test_rlimit(int keep_open)
   return 0;
 }
 
-static CURLcode test_lib518(char *URL)
+static CURLcode test_lib518(const char *URL)
 {
   CURLcode res;
   CURL *curl;
@@ -476,13 +471,13 @@ test_cleanup:
   return res;
 }
 
-#else /* defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT) */
+#else /* HAVE_GETRLIMIT && HAVE_SETRLIMIT */
 
-static CURLcode test_lib518(char *URL)
+static CURLcode test_lib518(const char *URL)
 {
   (void)URL;
   curl_mprintf("system lacks necessary system function(s)");
-  return 1; /* skip test */
+  return TEST_ERR_MAJOR_BAD; /* skip test */
 }
 
-#endif /* defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT) */
+#endif /* HAVE_GETRLIMIT && HAVE_SETRLIMIT */

@@ -222,7 +222,7 @@ static void sasl_state(struct SASL *sasl, struct Curl_easy *data,
     infof(data, "SASL %p state change from %s to %s",
           (void *)sasl, names[sasl->state], names[newstate]);
 #else
-  (void) data;
+  (void)data;
 #endif
 
   sasl->state = newstate;
@@ -430,10 +430,10 @@ static bool sasl_choose_ntlm(struct Curl_easy *data, struct sasl_ctx *sctx)
     const char *service = data->set.str[STRING_SERVICE_NAME] ?
       data->set.str[STRING_SERVICE_NAME] :
       sctx->sasl->params->service;
-    const char *hostname, *disp_hostname;
+    const char *hostname;
     int port;
 
-    Curl_conn_get_host(data, FIRSTSOCKET, &hostname, &disp_hostname, &port);
+    Curl_conn_get_current_host(data, FIRSTSOCKET, &hostname, &port);
 
     sctx->mech = SASL_MECH_STRING_NTLM;
     sctx->state1 = SASL_NTLM;
@@ -461,9 +461,9 @@ static bool sasl_choose_oauth(struct Curl_easy *data, struct sasl_ctx *sctx)
 
   if(sctx->user && oauth_bearer &&
      (sctx->enabledmechs & SASL_MECH_OAUTHBEARER)) {
-    const char *hostname, *disp_hostname;
+    const char *hostname;
     int port;
-    Curl_conn_get_host(data, FIRSTSOCKET, &hostname, &disp_hostname, &port);
+    Curl_conn_get_current_host(data, FIRSTSOCKET, &hostname, &port);
 
     sctx->mech = SASL_MECH_STRING_OAUTHBEARER;
     sctx->state1 = SASL_OAUTH2;
@@ -557,7 +557,7 @@ CURLcode Curl_sasl_start(struct SASL *sasl, struct Curl_easy *data,
   /* Calculate the supported authentication mechanism, by decreasing order of
      security, as well as the initial response where appropriate */
   if(sasl_choose_external(data, &sctx) ||
-#if defined(USE_KERBEROS5)
+#ifdef USE_KERBEROS5
      sasl_choose_krb5(data, &sctx) ||
 #endif
 #ifdef USE_GSASL
@@ -613,10 +613,10 @@ CURLcode Curl_sasl_continue(struct SASL *sasl, struct Curl_easy *data,
   struct connectdata *conn = data->conn;
   saslstate newstate = SASL_FINAL;
   struct bufref resp;
-  const char *hostname, *disp_hostname;
+  const char *hostname;
   int port;
-#if defined(USE_KERBEROS5) || defined(USE_NTLM) \
-    || !defined(CURL_DISABLE_DIGEST_AUTH)
+#if defined(USE_KERBEROS5) || defined(USE_NTLM) || \
+  !defined(CURL_DISABLE_DIGEST_AUTH)
   const char *service = data->set.str[STRING_SERVICE_NAME] ?
     data->set.str[STRING_SERVICE_NAME] :
     sasl->params->service;
@@ -624,7 +624,7 @@ CURLcode Curl_sasl_continue(struct SASL *sasl, struct Curl_easy *data,
   const char *oauth_bearer = data->set.str[STRING_BEARER];
   struct bufref serverdata;
 
-  Curl_conn_get_host(data, FIRSTSOCKET, &hostname, &disp_hostname, &port);
+  Curl_conn_get_current_host(data, FIRSTSOCKET, &hostname, &port);
   Curl_bufref_init(&serverdata);
   Curl_bufref_init(&resp);
   *progress = SASL_INPROGRESS;
@@ -722,7 +722,7 @@ CURLcode Curl_sasl_continue(struct SASL *sasl, struct Curl_easy *data,
   }
 #endif
 
-#if defined(USE_KERBEROS5)
+#ifdef USE_KERBEROS5
   case SASL_GSSAPI: {
     struct kerberos5data *krb5 = Curl_auth_krb5_get(conn);
     result = !krb5 ? CURLE_OUT_OF_MEMORY :

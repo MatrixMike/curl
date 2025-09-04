@@ -21,10 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
@@ -35,7 +33,7 @@
  * auth info.
  */
 
-static CURLcode test_lib503(char *URL)
+static CURLcode test_lib503(const char *URL)
 {
   CURL *c = NULL;
   CURLM *m = NULL;

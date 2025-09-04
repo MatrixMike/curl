@@ -56,7 +56,6 @@
 #include "transfer.h"
 #include "curl_krb5.h"
 #include "curlx/warnless.h"
-#include "strcase.h"
 #include "strdup.h"
 
 /* The last 3 #include files should be in this order */
@@ -131,7 +130,7 @@ krb5_init(void *app_data)
 static int
 krb5_check_prot(void *app_data, int level)
 {
-  (void)app_data; /* unused */
+  (void)app_data;
   if(level == PROT_CONFIDENTIAL)
     return -1;
   return 0;
@@ -139,8 +138,7 @@ krb5_check_prot(void *app_data, int level)
 
 static int
 krb5_decode(void *app_data, void *buf, int len,
-            int level UNUSED_PARAM,
-            struct connectdata *conn UNUSED_PARAM)
+            int level, struct connectdata *conn)
 {
   gss_ctx_id_t *context = app_data;
   OM_uint32 maj, min;
@@ -215,12 +213,14 @@ krb5_auth(void *app_data, struct Curl_easy *data, struct connectdata *conn)
   gss_ctx_id_t *context = app_data;
   struct gss_channel_bindings_struct chan;
   size_t base64_sz = 0;
-  struct sockaddr_in *remote_addr =
-    (struct sockaddr_in *)CURL_UNCONST(&conn->remote_addr->curl_sa_addr);
+  const struct Curl_sockaddr_ex *remote_addr =
+    Curl_conn_get_remote_addr(data, FIRSTSOCKET);
+  struct sockaddr_in *remote_in_addr = remote_addr ?
+    (struct sockaddr_in *)CURL_UNCONST(&remote_addr->curl_sa_addr) : NULL;
   char *stringp;
   struct ftp_conn *ftpc = Curl_conn_meta_get(conn, CURL_META_FTP_CONN);
 
-  if(!ftpc)
+  if(!ftpc || !remote_in_addr)
     return -2;
 
   if(getsockname(conn->sock[FIRSTSOCKET],
@@ -232,7 +232,7 @@ krb5_auth(void *app_data, struct Curl_easy *data, struct connectdata *conn)
   chan.initiator_address.value = &conn->local_addr.sin_addr.s_addr;
   chan.acceptor_addrtype = GSS_C_AF_INET;
   chan.acceptor_address.length = l - 4;
-  chan.acceptor_address.value = &remote_addr->sin_addr.s_addr;
+  chan.acceptor_address.value = &remote_in_addr->sin_addr.s_addr;
   chan.application_data.length = 0;
   chan.application_data.value = NULL;
 
@@ -384,7 +384,8 @@ static void krb5_end(void *app_data)
   OM_uint32 min;
   gss_ctx_id_t *context = app_data;
   if(*context != GSS_C_NO_CONTEXT) {
-    OM_uint32 maj = gss_delete_sec_context(&min, context, GSS_C_NO_BUFFER);
+    OM_uint32 maj = Curl_gss_delete_sec_context(&min, context,
+                                                GSS_C_NO_BUFFER);
     (void)maj;
     DEBUGASSERT(maj == GSS_S_COMPLETE);
   }
@@ -468,7 +469,7 @@ static int ftp_send_command(struct Curl_easy *data, const char *message, ...)
       ftp_code = -1;
   }
 
-  (void)nread; /* Unused */
+  (void)nread;
   return ftp_code;
 }
 
@@ -701,7 +702,7 @@ static CURLcode sec_send(struct Curl_easy *data, int sockindex,
                          const void *buffer, size_t len, bool eos,
                          size_t *pnwritten)
 {
-  (void)eos; /* unused */
+  (void)eos;
   return sec_write(data, sockindex, buffer, len, pnwritten);
 }
 
@@ -716,7 +717,7 @@ int Curl_sec_read_msg(struct Curl_easy *data, struct connectdata *conn,
   size_t decoded_sz = 0;
   CURLcode error;
 
-  (void) data;
+  (void)data;
 
   if(!conn->mech)
     /* not initialized, return error */

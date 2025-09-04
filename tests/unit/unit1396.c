@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
+#include "unitcheck.h"
 
 static CURLcode t1396_setup(void)
 {
@@ -37,7 +37,7 @@ static void t1396_stop(CURL *easy)
   curl_global_cleanup();
 }
 
-static CURLcode test_unit1396(char *arg)
+static CURLcode test_unit1396(const char *arg)
 {
   CURL *easy;
 

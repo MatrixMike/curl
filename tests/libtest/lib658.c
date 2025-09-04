@@ -21,17 +21,15 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
  * Get a single URL without select().
  */
 
-static CURLcode test_lib658(char *URL)
+static CURLcode test_lib658(const char *URL)
 {
   CURL *handle = NULL;
   CURLcode res = CURLE_OK;

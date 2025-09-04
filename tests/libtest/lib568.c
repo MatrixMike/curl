@@ -21,14 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
+#include "first.h"
 
 #include "testutil.h"
 #include "memdebug.h"
@@ -36,7 +29,7 @@
 /*
  * Test the Client->Server ANNOUNCE functionality (PUT style)
  */
-static CURLcode test_lib568(char *URL)
+static CURLcode test_lib568(const char *URL)
 {
   CURLcode res;
   CURL *curl;

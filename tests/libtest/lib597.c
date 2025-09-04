@@ -21,12 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include <limits.h>
-
-#include "testutil.h"
-#include "warnless.h"
 #include "memdebug.h"
 
 /*
@@ -38,7 +34,7 @@
  * with function curl_multi_info_read().
  */
 
-static CURLcode test_lib597(char *URL)
+static CURLcode test_lib597(const char *URL)
 {
   CURL *easy = NULL;
   CURLM *multi = NULL;
